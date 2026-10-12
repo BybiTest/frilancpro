@@ -126,19 +126,18 @@ class FreelanceViewModel(
     }
 
     fun simulateShowInterstitialAd() {
-        _activeAdMessage.value = "تبلیغ تمام‌صفحه تپسل/تپسی با موفقیت نمایش داده شد و بسته شد."
+        _activeAdMessage.value = "تبلیغات هنوز به SDK واقعی تپسل متصل نشده‌اند؛ در حال حاضر تبلیغی نمایش داده نمی‌شود."
     }
 
     fun simulateShowRewardedAd() {
-        repository.addRewardAiCredits(3)
-        _activeAdMessage.value = "ویدیوی جایزه‌ای تپسی کامل شد! +۳ اعتبار رایگان هوش مصنوعی اضافه شد."
-        _uiNotice.value = "🎁 ۳ اعتبار هوش مصنوعی رایگان اضافه شد."
+        // Never grant credits without a real rewarded-ad completion callback.
+        _activeAdMessage.value = "تبلیغ جایزه‌ای هنوز به SDK واقعی تپسل متصل نیست؛ اعتباری اضافه نشد."
+        _uiNotice.value = "برای دریافت اعتبار رایگان، اتصال تبلیغ جایزه‌ای باید تکمیل شود."
     }
 
     fun simulatePurchaseSubscription(gateway: PaymentGateway, planName: String) {
-        repository.upgradeToVip()
         val storeName = if (gateway == PaymentGateway.CAFE_BAZAAR) "کافه بازار" else "مایکت"
-        _uiNotice.value = "🎉 خرید اشتراک $planName از طریق درگاه $storeName با موفقیت انجام شد و اکانت VIP فعال شد!"
+        _uiNotice.value = "پرداخت $planName از طریق $storeName هنوز پیاده‌سازی نشده است؛ اشتراک فعال نشده."
     }
 
     fun updateActiveResume(updated: ResumeData) {
@@ -215,9 +214,7 @@ class FreelanceViewModel(
     }
 
     fun upgradeToVip() {
-        repository.upgradeToVip()
-        _showVipModal.value = false
-        _uiNotice.value = "🎉 تبریک! اشتراک حرفه‌ای VIP برای شما فعال شد."
+        _uiNotice.value = "فعال‌سازی VIP پس از اتصال و تأیید خرید واقعی کافه‌بازار یا مایکت امکان‌پذیر است."
     }
 
     fun watchRewardedAdForCredits() {
