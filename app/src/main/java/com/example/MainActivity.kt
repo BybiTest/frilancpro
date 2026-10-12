@@ -1,6 +1,7 @@
 package com.example
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -35,15 +36,28 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.model.*
+import com.example.billing.BazaarBillingManager
 import com.example.ui.screens.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.AppTab
 import com.example.ui.viewmodel.FreelanceViewModel
 
 class MainActivity : ComponentActivity() {
+    private var billingConnected by mutableStateOf(false)
+    private lateinit var billingManager: BazaarBillingManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        billingManager = BazaarBillingManager(
+            activity = this,
+            onMessage = { message -> runOnUiThread {
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            } },
+            onConnectionChanged = { connected -> billingConnected = connected }
+        )
+        billingManager.connect()
+
         setContent {
             val viewModel: FreelanceViewModel = viewModel()
             val appSettings by viewModel.appSettings.collectAsStateWithLifecycle()
@@ -56,10 +70,36 @@ class MainActivity : ComponentActivity() {
                 }
 
                 CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-                    FreelanceProApp(viewModel = viewModel, appSettings = appSettings)
+                    FreelanceProApp(
+                        viewModel = viewModel,
+                        appSettings = appSettings,
+                        billingConnected = billingConnected,
+                        onPurchaseSubscription = { gateway, planName ->
+                            if (gateway != PaymentGateway.CAFE_BAZAAR) {
+                                Toast.makeText(this, "فعلاً خرید اشتراک فقط از طریق کافه‌بازار فعال است.", Toast.LENGTH_LONG).show()
+                            } else {
+                                val productId = when (planName) {
+                                    "۱ ماهه" -> "vip_monthly"
+                                    "۳ ماهه" -> "vip_quarterly"
+                                    else -> "vip_yearly"
+                                }
+                                billingManager.subscribe(productId) { verifiedId ->
+                                    viewModel.activateVerifiedSubscription(verifiedId)
+                                }
+                            }
+                        },
+                        onRestoreSubscriptions = { onRestored ->
+                            billingManager.restoreSubscriptions(onRestored)
+                        }
+                    )
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        if (::billingManager.isInitialized) billingManager.disconnect()
+        super.onDestroy()
     }
 }
 
@@ -67,7 +107,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun FreelanceProApp(
     viewModel: FreelanceViewModel,
-    appSettings: AppSettings
+    appSettings: AppSettings,
+    billingConnected: Boolean,
+    onPurchaseSubscription: (PaymentGateway, String) -> Unit,
+    onRestoreSubscriptions: ((String) -> Unit) -> Unit
 ) {
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
@@ -95,6 +138,14 @@ fun FreelanceProApp(
         uiNotice?.let { msg ->
             snackbarHostState.showSnackbar(msg)
             viewModel.dismissNotice()
+        }
+    }
+
+    LaunchedEffect(billingConnected) {
+        if (billingConnected) {
+            onRestoreSubscriptions { productId ->
+                viewModel.activateVerifiedSubscription(productId)
+            }
         }
     }
 
@@ -335,7 +386,7 @@ fun FreelanceProApp(
                             onPaymentGatewayChange = { viewModel.setPaymentGateway(it) },
                             onShowInterstitialAd = { viewModel.simulateShowInterstitialAd() },
                             onShowRewardedAd = { viewModel.simulateShowRewardedAd() },
-                            onPurchasePlan = { gateway, plan -> viewModel.simulatePurchaseSubscription(gateway, plan) }
+                            onPurchasePlan = { gateway, plan -> onPurchaseSubscription(gateway, plan) }
                         )
                     }
                 }
@@ -366,7 +417,7 @@ fun FreelanceProApp(
         VipUpgradeDialog(
             currentCredits = userProfile.aiCredits,
             onDismiss = { viewModel.setShowVipModal(false) },
-            onUpgrade = { viewModel.upgradeToVip() },
+            onUpgrade = { onPurchaseSubscription(PaymentGateway.CAFE_BAZAAR, "سالانه") },
             onWatchAd = { viewModel.watchRewardedAdForCredits() }
         )
     }
