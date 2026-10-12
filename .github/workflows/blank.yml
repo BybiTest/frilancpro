@@ -1,4 +1,3 @@
-
 name: Android Build
 
 on:
@@ -15,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Android APK and AAB
+    name: Build APK, AAB and Bazaar BIN
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -33,35 +32,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          if [ -z "${ANDROID_HOME:-}" ]; then
-            echo "ANDROID_HOME is not configured."
-            exit 1
-          fi
+          test -n "${ANDROID_HOME:-}"
 
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" \
             -type f -name sdkmanager 2>/dev/null \
             | sort -V | tail -n 1)"
 
-          if [ -z "$SDKMANAGER" ]; then
-            echo "Could not find sdkmanager."
-            exit 1
-          fi
-
+          test -n "$SDKMANAGER"
           echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
-          echo "Android SDK: $ANDROID_HOME"
 
       - name: Accept Android SDK licenses
         shell: bash
         run: |
-          set -euo pipefail
           yes | "$SDKMANAGER" --licenses || true
 
       - name: Install Android SDK packages
         shell: bash
         run: |
           set -euo pipefail
-
           "$SDKMANAGER" \
             "platform-tools" \
             "platforms;android-36" \
@@ -76,18 +64,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f app/build.gradle.kts
 
-          echo "Required Gradle project files found."
-
-      - name: Create missing debug keystore
+      - name: Create debug keystore
         shell: bash
         run: |
           set -euo pipefail
-
           if [ ! -f debug.keystore ]; then
             keytool -genkeypair \
               -keystore debug.keystore \
@@ -101,9 +85,6 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-          test -f debug.keystore
-          echo "Debug keystore is ready."
-
       - name: Prepare release signing key
         shell: bash
         env:
@@ -113,81 +94,100 @@ jobs:
         run: |
           set -euo pipefail
 
-          KEY_PATH="$RUNNER_TEMP/upload-key.jks"
-
-          if [[ -n "$KEYSTORE_BASE64" && \
-                -n "$STORE_PASSWORD_SECRET" && \
-                -n "$KEY_PASSWORD_SECRET" ]]; then
-
-            printf '%s' "$KEYSTORE_BASE64" \
-              | base64 --decode > "$KEY_PATH"
-
-            {
-              echo "KEYSTORE_PATH=$KEY_PATH"
-              echo "STORE_PASSWORD=$STORE_PASSWORD_SECRET"
-              echo "KEY_PASSWORD=$KEY_PASSWORD_SECRET"
-            } >> "$GITHUB_ENV"
-
-            echo "Configured the supplied release key."
-
-          else
-            TEMP_PASSWORD="$(openssl rand -hex 24)"
-
-            keytool -genkeypair \
-              -keystore "$KEY_PATH" \
-              -storetype JKS \
-              -storepass "$TEMP_PASSWORD" \
-              -keypass "$TEMP_PASSWORD" \
-              -alias upload \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Temporary CI Build, OU=Build, O=frilancpro, C=US"
-
-            {
-              echo "KEYSTORE_PATH=$KEY_PATH"
-              echo "STORE_PASSWORD=$TEMP_PASSWORD"
-              echo "KEY_PASSWORD=$TEMP_PASSWORD"
-            } >> "$GITHUB_ENV"
-
-            echo "::warning::A temporary release key is being used. Do not publish this AAB as an update to an existing app."
+          if [[ -z "$KEYSTORE_BASE64" || \
+                -z "$STORE_PASSWORD_SECRET" || \
+                -z "$KEY_PASSWORD_SECRET" ]]; then
+            echo "::error::Release signing secrets are missing."
+            exit 1
           fi
 
-      - name: Build debug APK and release AAB
+          KEY_PATH="$RUNNER_TEMP/upload-key.jks"
+
+          printf '%s' "$KEYSTORE_BASE64" \
+            | base64 --decode > "$KEY_PATH"
+
+          keytool -list \
+            -keystore "$KEY_PATH" \
+            -storepass "$STORE_PASSWORD_SECRET" \
+            -alias upload >/dev/null
+
+          {
+            echo "KEYSTORE_PATH=$KEY_PATH"
+            echo "STORE_PASSWORD=$STORE_PASSWORD_SECRET"
+            echo "KEY_PASSWORD=$KEY_PASSWORD_SECRET"
+          } >> "$GITHUB_ENV"
+
+          echo "Release keystore validated."
+
+      - name: Build APK and AAB
         shell: bash
         run: |
           set -euo pipefail
-
           gradle --no-daemon \
             :app:assembleDebug \
             :app:bundleRelease
+
+      - name: Generate Cafe Bazaar BIN
+        shell: bash
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          BIN_DIR="app/build/outputs/bundle/release/bin"
+          SIGNER="$RUNNER_TEMP/bundlesigner-0.1.13.jar"
+
+          test -s "$AAB"
+          mkdir -p "$BIN_DIR"
+
+          curl --fail --location --silent --show-error \
+            "https://github.com/cafebazaar/bundle-signer/releases/download/v0.1.13/bundlesigner-0.1.13.jar" \
+            --output "$SIGNER"
+
+          java -jar "$SIGNER" genbin \
+            --bundle "$AAB" \
+            --bin "$BIN_DIR" \
+            --v2-signing-enabled true \
+            --v3-signing-enabled false \
+            --ks "$KEYSTORE_PATH" \
+            --ks-key-alias upload \
+            --ks-pass env:STORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD
+
+          echo "Generated BIN files:"
+          find "$BIN_DIR" -maxdepth 1 -type f -name '*.bin' -ls
+
+          if ! find "$BIN_DIR" -maxdepth 1 -type f \
+            -name '*.bin' -print -quit | grep -q .; then
+            echo "::error::BundleSigner did not generate a BIN file."
+            exit 1
+          fi
 
       - name: Verify build outputs
         shell: bash
         run: |
           set -euo pipefail
 
-          APK="app/build/outputs/apk/debug/app-debug.apk"
-          AAB="app/build/outputs/bundle/release/app-release.aab"
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          test -s app/build/outputs/bundle/release/app-release.aab
+          find app/build/outputs/bundle/release/bin \
+            -maxdepth 1 -type f -name '*.bin' \
+            -size +0c | grep -q .
 
-          if [ ! -f "$APK" ]; then
-            echo "Debug APK was not generated."
-            exit 1
-          fi
+          ls -lh \
+            app/build/outputs/apk/debug/app-debug.apk \
+            app/build/outputs/bundle/release/app-release.aab \
+            app/build/outputs/bundle/release/bin/*.bin
 
-          if [ ! -f "$AAB" ]; then
-            echo "Release AAB was not generated."
-            exit 1
-          fi
-
-          ls -lh "$APK" "$AAB"
-
-      - name: Upload APK and AAB
+      - name: Upload APK, AAB and BIN
         uses: actions/upload-artifact@v4
         with:
           name: frilancpro-android-build
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/bundle/release/bin/*.bin
           if-no-files-found: error
           retention-days: 14
