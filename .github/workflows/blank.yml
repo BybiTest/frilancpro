@@ -1,3 +1,4 @@
+
 name: Android Build
 
 on:
@@ -125,7 +126,24 @@ jobs:
           set -euo pipefail
           gradle --no-daemon \
             :app:assembleDebug \
+            :app:assembleRelease \
             :app:bundleRelease
+
+      - name: Verify APK and AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DEBUG_APK="app/build/outputs/apk/debug/app-debug.apk"
+          RELEASE_APK="app/build/outputs/apk/release/app-release.apk"
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+
+          test -s "$DEBUG_APK"
+          test -s "$RELEASE_APK"
+          test -s "$AAB"
+
+          echo "APK and AAB files:"
+          ls -lh "$DEBUG_APK" "$RELEASE_APK" "$AAB"
 
       - name: Generate Cafe Bazaar BIN
         shell: bash
@@ -165,21 +183,32 @@ jobs:
             exit 1
           fi
 
-      - name: Verify build outputs
+      - name: Verify all build outputs
         shell: bash
         run: |
           set -euo pipefail
 
-          test -s app/build/outputs/apk/debug/app-debug.apk
-          test -s app/build/outputs/bundle/release/app-release.aab
-          find app/build/outputs/bundle/release/bin \
-            -maxdepth 1 -type f -name '*.bin' \
-            -size +0c | grep -q .
+          DEBUG_APK="app/build/outputs/apk/debug/app-debug.apk"
+          RELEASE_APK="app/build/outputs/apk/release/app-release.apk"
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+          BIN_DIR="app/build/outputs/bundle/release/bin"
 
-          ls -lh \
-            app/build/outputs/apk/debug/app-debug.apk \
-            app/build/outputs/bundle/release/app-release.aab \
-            app/build/outputs/bundle/release/bin/*.bin
+          test -s "$DEBUG_APK"
+          test -s "$RELEASE_APK"
+          test -s "$AAB"
+
+          BIN_COUNT="$(find "$BIN_DIR" -maxdepth 1 \
+            -type f -name '*.bin' -size +0c | wc -l)"
+
+          if [ "$BIN_COUNT" -lt 1 ]; then
+            echo "::error::No valid BIN file was generated."
+            exit 1
+          fi
+
+          echo "Final output files:"
+          ls -lh "$DEBUG_APK" "$RELEASE_APK" "$AAB"
+          find "$BIN_DIR" -maxdepth 1 \
+            -type f -name '*.bin' -exec ls -lh {} \;
 
       - name: Upload APK, AAB and BIN
         uses: actions/upload-artifact@v4
@@ -187,6 +216,7 @@ jobs:
           name: frilancpro-android-build
           path: |
             app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
             app/build/outputs/bundle/release/bin/*.bin
           if-no-files-found: error
