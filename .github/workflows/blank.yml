@@ -35,22 +35,21 @@ jobs:
           set -euo pipefail
 
           if [ -z "${ANDROID_HOME:-}" ]; then
-            echo "ANDROID_HOME is not configured on this runner."
+            echo "ANDROID_HOME is not configured."
             exit 1
           fi
-
-          echo "Android SDK: $ANDROID_HOME"
 
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" \
-            -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+            -type f -name sdkmanager 2>/dev/null \
+            | sort -V | tail -n 1)"
 
           if [ -z "$SDKMANAGER" ]; then
-            echo "Could not find sdkmanager in Android SDK."
+            echo "Could not find sdkmanager."
             exit 1
           fi
 
-          echo "SDK manager: $SDKMANAGER"
           echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "Android SDK: $ANDROID_HOME"
 
       - name: Accept Android SDK licenses
         shell: bash
@@ -78,19 +77,34 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ ! -f "settings.gradle.kts" ]; then
-            echo "Missing settings.gradle.kts"
-            exit 1
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -f app/build.gradle.kts
+
+          echo "Required Gradle project files found."
+
+      - name: Create missing debug keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair \
+              -keystore debug.keystore \
+              -storetype JKS \
+              -storepass android \
+              -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
           fi
 
-          if [ ! -f "app/build.gradle.kts" ]; then
-            echo "Missing app/build.gradle.kts"
-            exit 1
-          fi
+          test -f debug.keystore
+          echo "Debug keystore is ready."
 
-          echo "Project files found."
-
-      - name: Prepare signing key
+      - name: Prepare release signing key
         shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -105,7 +119,8 @@ jobs:
                 -n "$STORE_PASSWORD_SECRET" && \
                 -n "$KEY_PASSWORD_SECRET" ]]; then
 
-            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEY_PATH"
+            printf '%s' "$KEYSTORE_BASE64" \
+              | base64 --decode > "$KEY_PATH"
 
             {
               echo "KEYSTORE_PATH=$KEY_PATH"
@@ -113,7 +128,7 @@ jobs:
               echo "KEY_PASSWORD=$KEY_PASSWORD_SECRET"
             } >> "$GITHUB_ENV"
 
-            echo "Configured the supplied signing key."
+            echo "Configured the supplied release key."
 
           else
             TEMP_PASSWORD="$(openssl rand -hex 24)"
@@ -135,7 +150,7 @@ jobs:
               echo "KEY_PASSWORD=$TEMP_PASSWORD"
             } >> "$GITHUB_ENV"
 
-            echo "::warning::A temporary signing key is being used. Do not publish this AAB as an update to an existing app."
+            echo "::warning::A temporary release key is being used. Do not publish this AAB as an update to an existing app."
           fi
 
       - name: Build debug APK and release AAB
