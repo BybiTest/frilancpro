@@ -1,0 +1,6 @@
+{
+  "name": "فریلنس‌پرو",
+  "description": "دستیار جامع شغلی و رزومه‌ساز فریلنسرها، تحلیل هوشمند ATS، پروپوزال‌نویسی با هوش مصنوعی، شبیه‌ساز مصاحبه و پرتال نمونه‌کار",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

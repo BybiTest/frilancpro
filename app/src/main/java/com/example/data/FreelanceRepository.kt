@@ -1,0 +1,193 @@
+package com.example.data
+
+import com.example.model.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+
+class FreelanceRepository {
+
+    private val _userProfile = MutableStateFlow(UserProfile())
+    val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
+
+    private val _resumes = MutableStateFlow(
+        listOf(
+            ResumeData(
+                id = "default_1",
+                title = "رزومه تخصصی دیزاین سیستم و UI/UX",
+                fullName = "علی رضایی",
+                jobTitle = "طراح ارشد محصول و رابط کاربری (UI/UX)",
+                bio = "متخصص طراحی سیستم‌های طراحی منسجم و بهینه‌سازی تجربه کاربر برای محصولات مقیاس‌پذیر با بیش از ۵ سال سابقه دورکاری بین‌المللی."
+            ),
+            ResumeData(
+                id = "default_2",
+                title = "رزومه فریلنسری بین‌المللی (انگلیسی)",
+                fullName = "Ali Rezaei",
+                jobTitle = "Senior Product & UI/UX Designer",
+                bio = "Crafting high-converting digital products, mobile apps, and robust design systems for global clients on Upwork and Contra."
+            )
+        )
+    )
+    val resumes: StateFlow<List<ResumeData>> = _resumes.asStateFlow()
+
+    private val _activeResume = MutableStateFlow(_resumes.value.first())
+    val activeResume: StateFlow<ResumeData> = _activeResume.asStateFlow()
+
+    private val _portfolioProjects = MutableStateFlow(
+        listOf(
+            PortfolioProject(
+                title = "طراحی مجدد اپلیکیشن فین‌تک پی‌والت",
+                category = "اپلیکیشن موبایل",
+                clientName = "شرکت مالی آریا",
+                description = "ساده‌سازی فرآیند انتقال وجه و افتتاح حساب آنلاین در ۳ مرحله ساده با بازخورد عالی کاربران.",
+                metrics = "۴۰٪ افزایش تراکنش‌های روزانه",
+                projectUrl = "https://dribbble.com/shots/example-1",
+                tags = listOf("Figma", "Fintech", "UX Research", "Design System")
+            ),
+            PortfolioProject(
+                title = "طراحی داشبورد تحلیلی ابری SaaS",
+                category = "داشبورد و وب",
+                clientName = "استارتاپ داده‌گستر",
+                description = "داشبورد مدیریت کمپین‌های تبلیغاتی با نمودارهای تحلیلی و دسترسی تیمی زنده.",
+                metrics = "کاهش ۶۰ درصدی زمان آموزش کاربران جدید",
+                projectUrl = "https://dribbble.com/shots/example-2",
+                tags = listOf("Dashboard", "Data Viz", "SaaS", "Tailwind UI")
+            ),
+            PortfolioProject(
+                title = "طراحی لندینگ پیج و هویت بصری گیم‌شاپ",
+                category = "برندینگ و وب",
+                clientName = "استودیو بازی نکسوس",
+                description = "طراحی بصری تیره (Dark Mode) با انیمیشن‌های میکرو و تعاملی برای گیمرها.",
+                metrics = "نرخ تبدیل ۲۸ درصدی خرید بازی",
+                projectUrl = "https://dribbble.com/shots/example-3",
+                tags = listOf("Gaming", "Dark Mode", "Micro-interactions")
+            )
+        )
+    )
+    val portfolioProjects: StateFlow<List<PortfolioProject>> = _portfolioProjects.asStateFlow()
+
+    private val _clientProjects = MutableStateFlow(defaultProjects)
+    val clientProjects: StateFlow<List<ClientProject>> = _clientProjects.asStateFlow()
+
+    val interviewScenarios = listOf(
+        InterviewScenario(
+            id = "q1",
+            category = "مذاکره قیمت و تخفیف",
+            question = "کارفرما می‌گوید: «قیمت شما نسبت به بقیه پیشنهادها خیلی بالاست، آیا می‌توانید ۵۰ درصد تخفیف بدهید تا کار را شروع کنیم؟» چطور پاسخ می‌دهید؟",
+            intentBehindQuestion = "کارفرما می‌خواهد ببیند آیا شما روی ارزش کار خود تسلط دارید یا فوراً قیمت را می‌شکنید و کیفیت را فدا می‌کنید.",
+            winningPoints = listOf(
+                "هرگز قیمت را بدون کم کردن حجم کار (Scope) کاهش ندهید.",
+                "تمرکز را از «هزینه» به «بازگشت سرمایه و درآمد کارفرما» هدایت کنید.",
+                "یک نسخه کوچک‌تر یا MVP از پروژه با بودجه کمتر پیشنهاد دهید."
+            ),
+            sampleIdealAnswer = "کاملاً درک می‌کنم که مدیریت بودجه برای شما مهم است. قیمت من بر اساس تضمین کیفیت، پشتیبانی پس از تحویل و سودآوری مستقیم این محصول برای کسب‌وکار شما تنظیم شده است. اگر سقف بودجه شما محدود است، می‌توانیم امکانات نسخه اول را تفکیک کنیم و بخش‌های اساسی‌تر را با بودجه فعلی شما انجام دهیم."
+        ),
+        InterviewScenario(
+            id = "q2",
+            category = "مدیریت تغییرات بی‌پایان (Scope Creep)",
+            question = "در میانه پروژه، کارفرما بدون پرداخت هزینه اضافه، ۵ ویژگی جدید و پیچیده درخواست می‌کند. برخورد شما چیست؟",
+            intentBehindQuestion = "سنجش مرزهای حرفه‌ای شما و مدیریت انتظارات کارفرما بدون ایجاد دلخوری.",
+            winningPoints = listOf(
+                "با آرامش از ایده‌های جدید کارفرما استقبال کنید.",
+                "قرارداد اولیه و سند تحویل (SOW) را یادآوری کنید.",
+                "این امکانات جدید را به عنوان «فاز دوم یا الحاقیه قرارداد» قیمت‌گذاری کنید."
+            ),
+            sampleIdealAnswer = "این ایده‌های جدید واقعاً فوق‌العاده هستند و محصول را جذاب‌تر می‌کنند! از آنجا که در فاز اول روی موارد مشخصی توافق کرده بودیم، پیشنهاد می‌کنم ابتدا فاز اول را سر موعد تحویل دهیم و بلافاصله این ویژگی‌های جدید را در قالب فاز دوم با زمان‌بندی و برآورد مجزا پیاده‌سازی کنیم."
+        ),
+        InterviewScenario(
+            id = "q3",
+            category = "تاخیر و موعد تحویل (Deadlines)",
+            question = "اگر به دلیل مشکل فنی یا بیماری پیش‌بینی نشده متوجه شدید پروژه با ۲ روز تاخیر تحویل داده می‌شود، چه اقدامی می‌کنید؟",
+            intentBehindQuestion = "شفافیت و صداقت در ارتباطات فریلنسری قبل از به وقوع پیوستن فاجعه.",
+            winningPoints = listOf(
+                "حداقل ۲۴ تا ۴۸ ساعت قبل از ددلاین کارفرما را مطلع کنید، نه در لحظه آخر!",
+                "دلیل را صادقانه اما حرفه‌ای توضیح دهید.",
+                "برنامه جبرانی دقیق برای تحویل بخش‌های آماده ارائه دهید."
+            ),
+            sampleIdealAnswer = "بلافاصله با کارفرما تماس می‌گیرم یا پیام می‌دهم: «سلام، برای حفظ بالاترین استاندارد کیفی و تست نهایی، نیاز به ۴۸ ساعت زمان اضافه دارم. تا این لحظه ۸۰ درصد کار آماده است و پیش‌نمایش آن را ارسال می‌کنم تا در جریان پیشرفت قرار بگیرید.»"
+        )
+    )
+
+    fun updateActiveResume(updated: ResumeData) {
+        _activeResume.value = updated
+        _resumes.update { list ->
+            list.map { if (it.id == updated.id) updated else it }
+        }
+    }
+
+    fun selectResume(resume: ResumeData) {
+        _activeResume.value = resume
+    }
+
+    fun addResume(title: String) {
+        val newResume = ResumeData(
+            title = title,
+            fullName = _activeResume.value.fullName,
+            jobTitle = _activeResume.value.jobTitle,
+            email = _activeResume.value.email,
+            phone = _activeResume.value.phone,
+            bio = _activeResume.value.bio
+        )
+        _resumes.update { it + newResume }
+        _activeResume.value = newResume
+    }
+
+    fun addClientProject(project: ClientProject) {
+        _clientProjects.update { listOf(project) + it }
+    }
+
+    fun updateProjectStatus(projectId: String, newStatus: ProjectStatus) {
+        _clientProjects.update { list ->
+            list.map { if (it.id == projectId) it.copy(status = newStatus) else it }
+        }
+    }
+
+    fun addPortfolioProject(item: PortfolioProject) {
+        _portfolioProjects.update { listOf(item) + it }
+    }
+
+    fun upgradeToVip() {
+        _userProfile.update { it.copy(tier = SubscriptionTier.VIP_PRO, aiCredits = 999) }
+    }
+
+    fun addRewardAiCredits(amount: Int = 3) {
+        _userProfile.update { it.copy(aiCredits = it.aiCredits + amount) }
+    }
+
+    fun consumeAiCredit(): Boolean {
+        if (_userProfile.value.tier == SubscriptionTier.VIP_PRO) return true
+        if (_userProfile.value.aiCredits > 0) {
+            _userProfile.update { it.copy(aiCredits = it.aiCredits - 1) }
+            return true
+        }
+        return false
+    }
+
+    fun calculateFreelanceRate(input: RateCalculatorInput): RateCalculationOutput {
+        val totalMonthlyExpense = input.monthlyLivingExpenses + input.businessExpenses
+        val annualExpense = totalMonthlyExpense * 12
+        val annualTargetWithSavings = (annualExpense * (100 + input.desiredSavingsMarginPercent)) / 100
+
+        val workingWeeks = (52 - input.vacationWeeksPerYear).coerceAtLeast(1)
+        val annualBillableHours = (workingWeeks * input.billableHoursPerWeek).coerceAtLeast(1)
+
+        val hourlyRate = annualTargetWithSavings / annualBillableHours
+        val dailyRate = hourlyRate * 6 // Standard 6-hour intense freelance day
+        val minimumProjectRate = hourlyRate * 15 // Smallest viable freelance project
+
+        val advice = when {
+            hourlyRate < 250_000 -> "نرخ ساعتی شما اقتصادی است. برای پوشش هزینه‌های غیرقابل‌پیش‌بینی، کم‌کم نرخ پروژه‌های جدید را ۲۰٪ افزایش دهید."
+            hourlyRate < 600_000 -> "نرخ ساعتی شما در محدوده استاندارد بازار فریلنسری ایران قرار دارد و تعادل خوبی بین سود و جذب کارفرما ایجاد می‌کند."
+            else -> "نرخ ساعتی شما ممتاز (پریمیوم) است. برای حفظ این نرخ، روی ارائه پورتفولیوی بی‌نقص و برندسازی شخصی تمرکز کنید."
+        }
+
+        return RateCalculationOutput(
+            hourlyRateToman = hourlyRate,
+            dailyRateToman = dailyRate,
+            minimumProjectRateToman = minimumProjectRate,
+            totalAnnualTargetToman = annualTargetWithSavings,
+            adviceText = advice
+        )
+    }
+}
