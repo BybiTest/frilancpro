@@ -1,0 +1,84 @@
+
+name: Android Build
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+
+      - name: Prepare signing key
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD_SECRET: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD_SECRET: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/upload-key.jks"
+
+          if [[ -n "$KEYSTORE_BASE64" && -n "$STORE_PASSWORD_SECRET" && -n "$KEY_PASSWORD_SECRET" ]]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEY_PATH"
+            {
+              echo "KEYSTORE_PATH=$KEY_PATH"
+              echo "STORE_PASSWORD=$STORE_PASSWORD_SECRET"
+              echo "KEY_PASSWORD=$KEY_PASSWORD_SECRET"
+            } >> "$GITHUB_ENV"
+          else
+            TEMP_PASSWORD="$(openssl rand -hex 16)"
+            keytool -genkeypair -v \
+              -keystore "$KEY_PATH" \
+              -storetype JKS \
+              -storepass "$TEMP_PASSWORD" \
+              -keypass "$TEMP_PASSWORD" \
+              -alias upload \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Temporary CI Build, OU=Build, O=frilancpro, C=US"
+            {
+              echo "KEYSTORE_PATH=$KEY_PATH"
+              echo "STORE_PASSWORD=$TEMP_PASSWORD"
+              echo "KEY_PASSWORD=$TEMP_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "::warning::Temporary signing key used. Do not publish this AAB as an app update."
+          fi
+
+      - name: Build APK and AAB
+        run: gradle --no-daemon :app:assembleDebug :app:bundleRelease
+
+      - name: Upload build outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: frilancpro-android-build
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 14
