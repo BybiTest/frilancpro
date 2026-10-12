@@ -124,13 +124,13 @@ fun VipUpgradeDialog(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "ماهانه فقط ۵۹,۰۰۰ تومان",
+                                text = "۳۹۹,۰۰۰ تومان برای ۳۶۵ روز",
                                 color = colors.textPrimary,
                                 fontSize = (12 * fontScale).sp
                             )
                         }
                         Text(
-                            text = "۵۰٪ تخفیف",
+                            text = "اشتراک ۳۶۵ روزه",
                             color = Emerald500,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = (12 * fontScale).sp
