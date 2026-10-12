@@ -121,6 +121,8 @@ jobs:
           echo "Release keystore validated."
 
       - name: Build APK and AAB
+        env:
+          BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
         shell: bash
         run: |
           set -euo pipefail
