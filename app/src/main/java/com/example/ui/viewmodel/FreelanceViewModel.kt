@@ -213,8 +213,19 @@ class FreelanceViewModel(
         _uiNotice.value = "نمونه کار جدید به پورتفولیو اضافه شد."
     }
 
-    fun upgradeToVip() {
-        _uiNotice.value = "فعال‌سازی VIP پس از اتصال و تأیید خرید واقعی کافه‌بازار یا مایکت امکان‌پذیر است."
+    fun activateVerifiedSubscription(productId: String) {
+        if (productId !in setOf("vip_monthly", "vip_quarterly", "vip_yearly")) {
+            _uiNotice.value = "شناسه اشتراک معتبر نیست؛ VIP فعال نشد."
+            return
+        }
+        // This method is called only after Poolakey verifies the purchase or returns
+        // the subscription in Bazaar's current-subscriptions query.
+        repository.upgradeToVip()
+        _uiNotice.value = when (productId) {
+            "vip_monthly" -> "اشتراک یک‌ماهه VIP توسط کافه‌بازار تأیید شد."
+            "vip_quarterly" -> "اشتراک سه‌ماهه VIP توسط کافه‌بازار تأیید شد."
+            else -> "اشتراک یک‌ساله VIP توسط کافه‌بازار تأیید شد."
+        }
     }
 
     fun watchRewardedAdForCredits() {
