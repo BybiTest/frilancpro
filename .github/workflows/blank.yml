@@ -3,9 +3,11 @@ name: Android Build
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   pull_request:
-    branches: ["main"]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -13,10 +15,12 @@ permissions:
 
 jobs:
   build:
+    name: Build Android APK and AAB
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Java
@@ -25,13 +29,66 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Locate Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ANDROID_HOME:-}" ]; then
+            echo "ANDROID_HOME is not configured on this runner."
+            exit 1
+          fi
+
+          echo "Android SDK: $ANDROID_HOME"
+
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" \
+            -type f -name sdkmanager 2>/dev/null | sort | tail -n 1)"
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Could not find sdkmanager in Android SDK."
+            exit 1
+          fi
+
+          echo "SDK manager: $SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses || true
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.3.1"
+
+      - name: Check project files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f "settings.gradle.kts" ]; then
+            echo "Missing settings.gradle.kts"
+            exit 1
+          fi
+
+          if [ ! -f "app/build.gradle.kts" ]; then
+            echo "Missing app/build.gradle.kts"
+            exit 1
+          fi
+
+          echo "Project files found."
 
       - name: Prepare signing key
         shell: bash
@@ -41,18 +98,27 @@ jobs:
           KEY_PASSWORD_SECRET: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
+
           KEY_PATH="$RUNNER_TEMP/upload-key.jks"
 
-          if [[ -n "$KEYSTORE_BASE64" && -n "$STORE_PASSWORD_SECRET" && -n "$KEY_PASSWORD_SECRET" ]]; then
+          if [[ -n "$KEYSTORE_BASE64" && \
+                -n "$STORE_PASSWORD_SECRET" && \
+                -n "$KEY_PASSWORD_SECRET" ]]; then
+
             printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEY_PATH"
+
             {
               echo "KEYSTORE_PATH=$KEY_PATH"
               echo "STORE_PASSWORD=$STORE_PASSWORD_SECRET"
               echo "KEY_PASSWORD=$KEY_PASSWORD_SECRET"
             } >> "$GITHUB_ENV"
+
+            echo "Configured the supplied signing key."
+
           else
-            TEMP_PASSWORD="$(openssl rand -hex 16)"
-            keytool -genkeypair -v \
+            TEMP_PASSWORD="$(openssl rand -hex 24)"
+
+            keytool -genkeypair \
               -keystore "$KEY_PATH" \
               -storetype JKS \
               -storepass "$TEMP_PASSWORD" \
@@ -62,23 +128,51 @@ jobs:
               -keysize 2048 \
               -validity 10000 \
               -dname "CN=Temporary CI Build, OU=Build, O=frilancpro, C=US"
+
             {
               echo "KEYSTORE_PATH=$KEY_PATH"
               echo "STORE_PASSWORD=$TEMP_PASSWORD"
               echo "KEY_PASSWORD=$TEMP_PASSWORD"
             } >> "$GITHUB_ENV"
-            echo "::warning::Temporary signing key used. Do not publish this AAB as an app update."
+
+            echo "::warning::A temporary signing key is being used. Do not publish this AAB as an update to an existing app."
           fi
 
-      - name: Build APK and AAB
-        run: gradle --no-daemon :app:assembleDebug :app:bundleRelease
+      - name: Build debug APK and release AAB
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      - name: Upload build outputs
+          gradle --no-daemon \
+            :app:assembleDebug \
+            :app:bundleRelease
+
+      - name: Verify build outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          AAB="app/build/outputs/bundle/release/app-release.aab"
+
+          if [ ! -f "$APK" ]; then
+            echo "Debug APK was not generated."
+            exit 1
+          fi
+
+          if [ ! -f "$AAB" ]; then
+            echo "Release AAB was not generated."
+            exit 1
+          fi
+
+          ls -lh "$APK" "$AAB"
+
+      - name: Upload APK and AAB
         uses: actions/upload-artifact@v4
         with:
           name: frilancpro-android-build
           path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/bundle/release/*.aab
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
