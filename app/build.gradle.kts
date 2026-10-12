@@ -23,7 +23,9 @@ android {
 
     // Inject the Bazaar public verification key from GitHub Actions; never commit the key itself.
     val bazaarRsaKey = System.getenv("BAZAAR_RSA_PUBLIC_KEY").orEmpty()
+    val tapsellAppKey = System.getenv("TAPSELL_APP_KEY").orEmpty()
     buildConfigField("String", "BAZAAR_RSA_PUBLIC_KEY", "\"$bazaarRsaKey\"")
+    buildConfigField("String", "TAPSELL_APP_KEY", "\"$tapsellAppKey\"")
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
@@ -89,6 +91,7 @@ googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.W
 dependencies {
   // Official Cafe Bazaar in-app billing SDK (Poolakey).
   implementation("com.github.cafebazaar.Poolakey:poolakey:2.2.0")
+  implementation("ir.tapsell.plus:tapsell-plus-sdk-android:2.3.3")
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
