@@ -20,6 +20,10 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // Inject the Bazaar public verification key from GitHub Actions; never commit the key itself.
+    val bazaarRsaKey = System.getenv("BAZAAR_RSA_PUBLIC_KEY").orEmpty()
+    buildConfigField("String", "BAZAAR_RSA_PUBLIC_KEY", "\"$bazaarRsaKey\"")
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,
@@ -83,6 +87,8 @@ googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.W
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
+  // Official Cafe Bazaar in-app billing SDK (Poolakey).
+  implementation("com.github.cafebazaar.Poolakey:poolakey:2.2.0")
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
