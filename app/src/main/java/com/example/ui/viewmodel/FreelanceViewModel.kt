@@ -228,8 +228,9 @@ class FreelanceViewModel(
         }
     }
 
-    fun watchRewardedAdForCredits() {
-        simulateShowRewardedAd()
+    fun grantRewardedAdCredits() {
+        repository.addRewardAiCredits(3)
         _showVipModal.value = false
+        _uiNotice.value = "تبلیغ با موفقیت تکمیل شد؛ ۳ اعتبار به حساب شما اضافه شد."
     }
 }
