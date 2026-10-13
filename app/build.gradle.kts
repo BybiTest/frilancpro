@@ -12,6 +12,18 @@ android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
+  flavorDimensions += "store"
+  productFlavors {
+    create("bazaar") {
+      dimension = "store"
+      buildConfigField("String", "STORE_FLAVOR", "\"bazaar\"")
+    }
+    create("myket") {
+      dimension = "store"
+      buildConfigField("String", "STORE_FLAVOR", "\"myket\"")
+    }
+  }
+
   defaultConfig {
     applicationId = "com.aistudio.freelancepro.vzxkp"
     minSdk = 24
@@ -89,8 +101,8 @@ googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.W
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
-  // Official Cafe Bazaar in-app billing SDK (Poolakey).
-  implementation("com.github.cafebazaar.Poolakey:poolakey:2.2.0")
+  // Keep Cafe Bazaar billing out of the Myket APK to avoid market-specific intents.
+  add("bazaarImplementation", "com.github.cafebazaar.Poolakey:poolakey:2.2.0")
   implementation("ir.tapsell.plus:tapsell-plus-sdk-android:2.3.3")
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
