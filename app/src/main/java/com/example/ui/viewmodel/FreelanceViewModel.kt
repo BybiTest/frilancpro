@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.FreelanceRepository
 import com.example.data.GeminiAiService
@@ -21,9 +22,10 @@ enum class AppTab(val titleFa: String, val titleEn: String) {
 }
 
 class FreelanceViewModel(
-    private val repository: FreelanceRepository = FreelanceRepository(),
+    application: Application,
+    private val repository: FreelanceRepository = FreelanceRepository(application),
     private val aiService: GeminiAiService = GeminiAiService()
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     val userProfile: StateFlow<UserProfile> = repository.userProfile
     val resumes: StateFlow<List<ResumeData>> = repository.resumes
