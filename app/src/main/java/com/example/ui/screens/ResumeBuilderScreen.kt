@@ -11,6 +11,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
+import java.io.IOException
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +39,21 @@ fun ResumeBuilderScreen(
 ) {
     val colors = LocalAppColors.current
     val fontScale = LocalFontScale.current.scale
+    val context = LocalContext.current
+    var exportResume by remember { mutableStateOf<ResumeData?>(null) }
+    val createPdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        val resumeToExport = exportResume
+        if (uri != null && resumeToExport != null) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { output -> ResumePdfExporter.write(context, resumeToExport, output) }
+                    ?: throw IOException("امکان باز کردن فایل خروجی وجود ندارد")
+                Toast.makeText(context, "فایل PDF رزومه ذخیره شد", Toast.LENGTH_LONG).show()
+            } catch (error: Exception) {
+                Toast.makeText(context, "ذخیره PDF ناموفق بود: " + (error.localizedMessage ?: "خطای ناشناخته"), Toast.LENGTH_LONG).show()
+            }
+        }
+        exportResume = null
+    }
 
     var isPreviewMode by remember { mutableStateOf(false) }
     var showNewResumeDialog by remember { mutableStateOf(false) }
@@ -369,10 +389,7 @@ fun ResumeBuilderScreen(
                     }
 
                     OutlinedButton(
-                        onClick = {
-                            saveChanges()
-                            onRequestAiAnalysis()
-                        },
+                        onClick = { saveChanges(); onRequestAiAnalysis() },
                         modifier = Modifier.weight(1f).height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.primary),
@@ -382,6 +399,21 @@ fun ResumeBuilderScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("تحلیل نمره ATS", fontSize = (12 * fontScale).sp, fontWeight = FontWeight.SemiBold)
                     }
+                }
+                Button(
+                    onClick = {
+                        saveChanges()
+                        exportResume = activeResume.copy(fullName = fullName, jobTitle = jobTitle, email = email, phone = phone, city = city, bio = bio)
+                        val safeName = fullName.ifBlank { "resume" }.replace(Regex("[^A-Za-z0-9آ-ی_-]"), "_").take(40)
+                        createPdfLauncher.launch(safeName + "_resume.pdf")
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp).testTag("export_resume_pdf_button"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.secondary, contentColor = Color.White)
+                ) {
+                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(19.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("ذخیره و دریافت فایل PDF رزومه", fontWeight = FontWeight.Bold)
                 }
             }
         } else {
