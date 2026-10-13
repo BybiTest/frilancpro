@@ -54,7 +54,6 @@ jobs:
             keytool -genkeypair -keystore debug.keystore -storetype JKS -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
       - name: Prepare release signing key
-        shell: bash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           STORE_PASSWORD_SECRET: ${{ secrets.STORE_PASSWORD }}
@@ -76,6 +75,7 @@ jobs:
       - name: Build all store variants
         env:
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
+          MYKET_RSA_PUBLIC_KEY: ${{ secrets.MYKET_RSA_PUBLIC_KEY }}
           TAPSELL_APP_KEY: ${{ secrets.TAPSELL_APP_KEY }}
         shell: bash
         run: |
