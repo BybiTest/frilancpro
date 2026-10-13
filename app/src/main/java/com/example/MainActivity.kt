@@ -84,8 +84,10 @@ class MainActivity : ComponentActivity() {
                         appSettings = appSettings,
                         billingConnected = billingConnected,
                         onPurchaseSubscription = { gateway, planName ->
-                            if (gateway != PaymentGateway.CAFE_BAZAAR) {
-                                Toast.makeText(this, "فعلاً خرید اشتراک فقط از طریق کافه‌بازار فعال است.", Toast.LENGTH_LONG).show()
+                            if (BuildConfig.STORE_FLAVOR == "myket") {
+                                Toast.makeText(this, "پرداخت مایکت هنوز به SDK و محصولات این برنامه متصل نشده است؛ خرید انجام نشد.", Toast.LENGTH_LONG).show()
+                            } else if (gateway != PaymentGateway.CAFE_BAZAAR) {
+                                Toast.makeText(this, "در نسخه کافه‌بازار، خرید فقط از درگاه کافه‌بازار پشتیبانی می‌شود.", Toast.LENGTH_LONG).show()
                             } else {
                                 val productId = when (planName) {
                                     "۱ ماهه" -> "vip_monthly"
