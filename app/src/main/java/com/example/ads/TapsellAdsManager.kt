@@ -1,6 +1,5 @@
 package com.example.ads
 
-import android.util.Log
 import androidx.activity.ComponentActivity
 import com.example.BuildConfig
 import ir.tapsell.plus.AdRequestCallback
