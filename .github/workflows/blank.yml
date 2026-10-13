@@ -123,6 +123,7 @@ jobs:
       - name: Build APK and AAB
         env:
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
+          TAPSELL_APP_KEY: ${{ secrets.TAPSELL_APP_KEY }}
         shell: bash
         run: |
           set -euo pipefail
