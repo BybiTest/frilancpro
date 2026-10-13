@@ -23,6 +23,9 @@ android {
     create("myket") {
       dimension = "store"
       buildConfigField("String", "STORE_FLAVOR", "\"myket\"")
+      manifestPlaceholders["marketApplicationId"] = "ir.mservices.market"
+      manifestPlaceholders["marketBindAddress"] = "ir.mservices.market.InAppBillingService.BIND"
+      manifestPlaceholders["marketPermission"] = "ir.mservices.market.BILLING"
     }
   }
 
@@ -140,6 +143,12 @@ dependencies {
   add(
     "bazaarImplementation",
     "com.github.cafebazaar.Poolakey:poolakey:2.2.0"
+  )
+
+  // Official Myket billing client, isolated to the Myket flavor.
+  add(
+    "myketImplementation",
+    "com.github.myketstore:myket-billing-client:1.19"
   )
 
   implementation("ir.tapsell.plus:tapsell-plus-sdk-android:2.3.3")
