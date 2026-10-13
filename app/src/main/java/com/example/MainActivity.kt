@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.model.*
 import com.example.billing.BazaarBillingManager
+import com.example.ads.TapsellAdsManager
 import com.example.ui.screens.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.AppTab
@@ -45,6 +46,7 @@ import com.example.ui.viewmodel.FreelanceViewModel
 class MainActivity : ComponentActivity() {
     private var billingConnected by mutableStateOf(false)
     private lateinit var billingManager: BazaarBillingManager
+    private lateinit var tapsellManager: TapsellAdsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +59,13 @@ class MainActivity : ComponentActivity() {
             onConnectionChanged = { connected -> billingConnected = connected }
         )
         billingManager.connect()
+        tapsellManager = TapsellAdsManager(
+            activity = this,
+            onMessage = { message -> runOnUiThread {
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            } }
+        )
+        tapsellManager.initialize()
 
         setContent {
             val viewModel: FreelanceViewModel = viewModel()
@@ -90,6 +99,10 @@ class MainActivity : ComponentActivity() {
                         },
                         onRestoreSubscriptions = { onRestored ->
                             billingManager.restoreSubscriptions(onRestored)
+                        },
+                        onShowInterstitialAd = { tapsellManager.showInterstitial() },
+                        onShowRewardedAd = {
+                            tapsellManager.showRewarded { viewModel.grantRewardedAdCredits() }
                         }
                     )
                 }
@@ -110,7 +123,9 @@ fun FreelanceProApp(
     appSettings: AppSettings,
     billingConnected: Boolean,
     onPurchaseSubscription: (PaymentGateway, String) -> Unit,
-    onRestoreSubscriptions: ((String) -> Unit) -> Unit
+    onRestoreSubscriptions: ((String) -> Unit) -> Unit,
+    onShowInterstitialAd: () -> Unit,
+    onShowRewardedAd: () -> Unit
 ) {
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
@@ -384,8 +399,8 @@ fun FreelanceProApp(
                             onThemeColorChange = { viewModel.setThemeColor(it) },
                             onDarkModeToggle = { viewModel.toggleDarkMode(it) },
                             onPaymentGatewayChange = { viewModel.setPaymentGateway(it) },
-                            onShowInterstitialAd = { viewModel.simulateShowInterstitialAd() },
-                            onShowRewardedAd = { viewModel.simulateShowRewardedAd() },
+                            onShowInterstitialAd = onShowInterstitialAd,
+                            onShowRewardedAd = onShowRewardedAd,
                             onPurchasePlan = { gateway, plan -> onPurchaseSubscription(gateway, plan) }
                         )
                     }
@@ -418,7 +433,7 @@ fun FreelanceProApp(
             currentCredits = userProfile.aiCredits,
             onDismiss = { viewModel.setShowVipModal(false) },
             onUpgrade = { onPurchaseSubscription(PaymentGateway.CAFE_BAZAAR, "سالانه") },
-            onWatchAd = { viewModel.watchRewardedAdForCredits() }
+            onWatchAd = onShowRewardedAd
         )
     }
 }
