@@ -1,18 +1,49 @@
 package com.example.data
 
+import android.content.Context
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.example.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class FreelanceRepository {
+class FreelanceRepository(context: Context? = null) {
+
+    private val resumePreferences = context?.applicationContext
+        ?.getSharedPreferences("freelancepro_resume_storage", Context.MODE_PRIVATE)
+    private val resumeListAdapter = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+        .adapter<List<ResumeData>>(
+            Types.newParameterizedType(List::class.java, ResumeData::class.java)
+        )
+
+    private fun loadSavedResumes(): List<ResumeData>? {
+        val json = resumePreferences?.getString("resumes_json", null) ?: return null
+        return runCatching { resumeListAdapter.fromJson(json) }.getOrNull()
+            ?.takeIf { it.isNotEmpty() }
+    }
+
+    private fun persistResumes(resumes: List<ResumeData>, activeId: String) {
+        val preferences = resumePreferences ?: return
+        runCatching {
+            val json = resumeListAdapter.toJson(resumes)
+            preferences.edit()
+                .putString("resumes_json", json)
+                .putString("active_resume_id", activeId)
+                .commit()
+        }
+    }
+
 
     private val _userProfile = MutableStateFlow(UserProfile())
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
     private val _resumes = MutableStateFlow(
-        listOf(
+        loadSavedResumes() ?: listOf(
             ResumeData(
                 id = "default_1",
                 title = "رزومه تخصصی دیزاین سیستم و UI/UX",
@@ -31,7 +62,11 @@ class FreelanceRepository {
     )
     val resumes: StateFlow<List<ResumeData>> = _resumes.asStateFlow()
 
-    private val _activeResume = MutableStateFlow(_resumes.value.first())
+    private val _activeResume = MutableStateFlow(
+        _resumes.value.firstOrNull {
+            it.id == resumePreferences?.getString("active_resume_id", null)
+        } ?: _resumes.value.first()
+    )
     val activeResume: StateFlow<ResumeData> = _activeResume.asStateFlow()
 
     private val _portfolioProjects = MutableStateFlow(
@@ -112,12 +147,19 @@ class FreelanceRepository {
     fun updateActiveResume(updated: ResumeData) {
         _activeResume.value = updated
         _resumes.update { list ->
-            list.map { if (it.id == updated.id) updated else it }
+            if (list.any { it.id == updated.id }) {
+                list.map { if (it.id == updated.id) updated else it }
+            } else {
+                list + updated
+            }
         }
+        persistResumes(_resumes.value, updated.id)
     }
 
     fun selectResume(resume: ResumeData) {
-        _activeResume.value = resume
+        val matchingResume = _resumes.value.firstOrNull { it.id == resume.id } ?: resume
+        _activeResume.value = matchingResume
+        persistResumes(_resumes.value, matchingResume.id)
     }
 
     fun addResume(title: String) {
@@ -131,6 +173,7 @@ class FreelanceRepository {
         )
         _resumes.update { it + newResume }
         _activeResume.value = newResume
+        persistResumes(_resumes.value, newResume.id)
     }
 
     fun addClientProject(project: ClientProject) {
