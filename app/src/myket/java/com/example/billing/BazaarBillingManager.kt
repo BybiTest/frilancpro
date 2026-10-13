@@ -95,7 +95,7 @@ class BazaarBillingManager(
                         if (disposed) return
                         if (result.isFailure() || purchase == null) {
                             onMessage(
-                                if (result.response == IabHelper.BILLING_RESPONSE_RESULT_USER_CANCELED) {
+                                if (result.getResponse() == IabHelper.BILLING_RESPONSE_RESULT_USER_CANCELED) {
                                     "پرداخت لغو شد؛ VIP فعال نشد."
                                 } else {
                                     "خرید مایکت تأیید نشد: ${result.message}"
