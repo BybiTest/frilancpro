@@ -102,7 +102,30 @@ class FreelanceRepository(context: Context? = null) {
     )
     val portfolioProjects: StateFlow<List<PortfolioProject>> = _portfolioProjects.asStateFlow()
 
-    private val _clientProjects = MutableStateFlow(defaultProjects)
+    private val clientProjectPreferences = context?.applicationContext
+        ?.getSharedPreferences("freelancepro_client_projects", Context.MODE_PRIVATE)
+    private val clientProjectListAdapter = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+        .adapter<List<ClientProject>>(
+            Types.newParameterizedType(List::class.java, ClientProject::class.java)
+        )
+
+    private fun loadSavedClientProjects(): List<ClientProject>? {
+        val json = clientProjectPreferences?.getString("client_projects_json", null) ?: return null
+        return runCatching { clientProjectListAdapter.fromJson(json) }.getOrNull()
+    }
+
+    private fun persistClientProjects(projects: List<ClientProject>) {
+        val preferences = clientProjectPreferences ?: return
+        runCatching {
+            preferences.edit()
+                .putString("client_projects_json", clientProjectListAdapter.toJson(projects))
+                .commit()
+        }
+    }
+
+    private val _clientProjects = MutableStateFlow(loadSavedClientProjects() ?: defaultProjects)
     val clientProjects: StateFlow<List<ClientProject>> = _clientProjects.asStateFlow()
 
     val interviewScenarios = listOf(
@@ -177,12 +200,15 @@ class FreelanceRepository(context: Context? = null) {
     }
 
     fun addClientProject(project: ClientProject) {
-        _clientProjects.update { listOf(project) + it }
+        _clientProjects.update { current ->
+            (listOf(project) + current).also(::persistClientProjects)
+        }
     }
 
     fun updateProjectStatus(projectId: String, newStatus: ProjectStatus) {
-        _clientProjects.update { list ->
-            list.map { if (it.id == projectId) it.copy(status = newStatus) else it }
+        _clientProjects.update { current ->
+            current.map { if (it.id == projectId) it.copy(status = newStatus) else it }
+                .also(::persistClientProjects)
         }
     }
 
