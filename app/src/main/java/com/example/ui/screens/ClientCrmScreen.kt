@@ -240,13 +240,13 @@ fun ClientCrmScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = clientName,
-                        onValueChange = { clientName = it },
+                        onValueChange = { clientName = it; formError = null },
                         label = { Text("نام کارفرما یا شرکت") },
                         colors = appFieldColors(colors)
                     )
                     OutlinedTextField(
                         value = projectTitle,
-                        onValueChange = { projectTitle = it },
+                        onValueChange = { projectTitle = it; formError = null },
                         label = { Text("عنوان پروژه") },
                         colors = appFieldColors(colors)
                     )
@@ -263,12 +263,12 @@ fun ClientCrmScreen(
                         },
                         label = { Text("مبلغ به تومان") },
                         isError = budgetError != null,
-                        supportingText = budgetError?.let { error -> ({ Text(error) }) },
+                        supportingText = { budgetError?.let { error -> Text(error) } },
                         colors = appFieldColors(colors)
                     )
                     OutlinedTextField(
                         value = deadline,
-                        onValueChange = { deadline = it },
+                        onValueChange = { deadline = it; formError = null },
                         label = { Text("موعد تحویل") },
                         colors = appFieldColors(colors)
                     )
