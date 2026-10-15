@@ -21,11 +21,11 @@ enum class AppTab(val titleFa: String, val titleEn: String) {
     SETTINGS("تنظیمات", "Settings")
 }
 
-class FreelanceViewModel(
-    application: Application,
-    private val repository: FreelanceRepository = FreelanceRepository(application),
-    private val aiService: GeminiAiService = GeminiAiService()
-) : AndroidViewModel(application) {
+class FreelanceViewModel(application: Application) : AndroidViewModel(application) {
+    // Keep the constructor compatible with Android's default ViewModel factories.
+    // Kotlin default parameters do not generate a Java-visible Application-only constructor.
+    private val repository = FreelanceRepository(application)
+    private val aiService = GeminiAiService()
 
     val userProfile: StateFlow<UserProfile> = repository.userProfile
     val resumes: StateFlow<List<ResumeData>> = repository.resumes
