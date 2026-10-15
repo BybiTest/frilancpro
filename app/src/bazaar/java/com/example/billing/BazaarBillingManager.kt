@@ -57,7 +57,9 @@ class BazaarBillingManager(
                 }
             }
             disconnected {
-                activity.runOnUiThread { onConnectionChanged(false) }
+                activity.runOnUiThread {
+                    if (!released && !activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
+                }
             }
         }
     }
@@ -78,10 +80,10 @@ class BazaarBillingManager(
             )
         ) {
             purchaseFlowBegan {
-                onMessage("در حال انتقال به صفحه پرداخت کافه‌بازار…")
+                notifyIfActive("در حال انتقال به صفحه پرداخت کافه‌بازار…")
             }
             failedToBeginFlow {
-                onMessage("شروع فرایند پرداخت ناموفق بود: ${it.message ?: "خطای نامشخص"}")
+                notifyIfActive("شروع فرایند پرداخت ناموفق بود: ${it.message ?: "خطای نامشخص"}")
             }
             purchaseSucceed { purchaseInfo ->
                 if (purchaseInfo.productId == productId) {
@@ -91,14 +93,14 @@ class BazaarBillingManager(
                         onMessage("خرید اشتراک در کافه‌بازار تأیید شد.")
                     }
                 } else {
-                    onMessage("شناسه محصول خریداری‌شده با طرح انتخابی مطابقت ندارد؛ اشتراک فعال نشد.")
+                    notifyIfActive("شناسه محصول خریداری‌شده با طرح انتخابی مطابقت ندارد؛ اشتراک فعال نشد.")
                 }
             }
             purchaseCanceled {
-                onMessage("پرداخت لغو شد؛ اشتراکی فعال نشد.")
+                notifyIfActive("پرداخت لغو شد؛ اشتراکی فعال نشد.")
             }
             purchaseFailed { error ->
-                onMessage("پرداخت تأیید نشد: ${error.message ?: "خطای نامشخص"}")
+                notifyIfActive("پرداخت تأیید نشد: ${error.message ?: "خطای نامشخص"}")
             }
         }
     }
@@ -119,7 +121,7 @@ class BazaarBillingManager(
                     }
             }
             queryFailed {
-                onMessage("بررسی اشتراک‌های قبلی انجام نشد؛ لطفاً بعداً دوباره تلاش کنید.")
+                notifyIfActive("بررسی اشتراک‌های قبلی انجام نشد؛ لطفاً بعداً دوباره تلاش کنید.")
             }
         }
     }
@@ -127,7 +129,14 @@ class BazaarBillingManager(
     fun disconnect() {
         connection?.disconnect()
         connection = null
-        onConnectionChanged(false)
+        if (!activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
+    }
+
+    private fun notifyIfActive(message: String) {
+        if (released || activity.isFinishing || activity.isDestroyed) return
+        activity.runOnUiThread {
+            if (!released && !activity.isFinishing && !activity.isDestroyed) onMessage(message)
+        }
     }
 
     fun release() {
