@@ -454,7 +454,14 @@ fun FreelanceProApp(
         VipUpgradeDialog(
             currentCredits = userProfile.aiCredits,
             onDismiss = { viewModel.setShowVipModal(false) },
-            onUpgrade = { onPurchaseSubscription(PaymentGateway.CAFE_BAZAAR, "سالانه") },
+            onUpgrade = {
+                val storeGateway = if (BuildConfig.STORE_FLAVOR == "myket") {
+                    PaymentGateway.MYKET
+                } else {
+                    PaymentGateway.CAFE_BAZAAR
+                }
+                onPurchaseSubscription(storeGateway, "۱ ساله")
+            },
             onWatchAd = onShowRewardedAd
         )
     }

@@ -168,7 +168,8 @@ class FreelanceRepository(context: Context? = null) {
         }
     }
 
-    private val _clientProjects = MutableStateFlow(loadSavedClientProjects() ?: defaultProjects)
+    // Start empty: sample customer/project records must never be presented as real user data.
+    private val _clientProjects = MutableStateFlow(loadSavedClientProjects() ?: emptyList())
     val clientProjects: StateFlow<List<ClientProject>> = _clientProjects.asStateFlow()
 
     val interviewScenarios = listOf(
@@ -290,28 +291,41 @@ class FreelanceRepository(context: Context? = null) {
     }
 
     fun calculateFreelanceRate(input: RateCalculatorInput): RateCalculationOutput {
-        val totalMonthlyExpense = input.monthlyLivingExpenses + input.businessExpenses
-        val annualExpense = totalMonthlyExpense * 12
-        val annualTargetWithSavings = (annualExpense * (100 + input.desiredSavingsMarginPercent)) / 100
+        // BigInteger prevents overflow when malformed or extreme values reach this calculation.
+        // Clamp inputs to sensible domain limits so negative expenses cannot produce negative prices.
+        val monthlyExpenses = java.math.BigInteger.valueOf(input.monthlyLivingExpenses.coerceAtLeast(0L))
+            .add(java.math.BigInteger.valueOf(input.businessExpenses.coerceAtLeast(0L)))
+        val annualExpenses = monthlyExpenses.multiply(java.math.BigInteger.valueOf(12L))
+        val marginPercent = input.desiredSavingsMarginPercent.coerceIn(0, 500)
+        val annualTarget = annualExpenses
+            .multiply(java.math.BigInteger.valueOf((100 + marginPercent).toLong()))
+            .divide(java.math.BigInteger.valueOf(100L))
 
-        val workingWeeks = (52 - input.vacationWeeksPerYear).coerceAtLeast(1)
-        val annualBillableHours = (workingWeeks * input.billableHoursPerWeek).coerceAtLeast(1)
+        val workingWeeks = (52 - input.vacationWeeksPerYear.coerceIn(0, 51)).coerceAtLeast(1)
+        val billableHoursPerWeek = input.billableHoursPerWeek.coerceIn(1, 80)
+        val annualBillableHours = java.math.BigInteger.valueOf(workingWeeks.toLong())
+            .multiply(java.math.BigInteger.valueOf(billableHoursPerWeek.toLong()))
+            .max(java.math.BigInteger.ONE)
 
-        val hourlyRate = annualTargetWithSavings / annualBillableHours
-        val dailyRate = hourlyRate * 6 // Standard 6-hour intense freelance day
-        val minimumProjectRate = hourlyRate * 15 // Smallest viable freelance project
+        val hourlyValue = annualTarget.divide(annualBillableHours)
+        val dailyValue = hourlyValue.multiply(java.math.BigInteger.valueOf(6L))
+        val minimumProjectValue = hourlyValue.multiply(java.math.BigInteger.valueOf(15L))
+        val maxLong = java.math.BigInteger.valueOf(Long.MAX_VALUE)
+        fun asNonNegativeLong(value: java.math.BigInteger): Long =
+            value.max(java.math.BigInteger.ZERO).min(maxLong).toLong()
 
+        val hourlyRate = asNonNegativeLong(hourlyValue)
         val advice = when {
-            hourlyRate < 250_000 -> "نرخ ساعتی شما اقتصادی است. برای پوشش هزینه‌های غیرقابل‌پیش‌بینی، کم‌کم نرخ پروژه‌های جدید را ۲۰٪ افزایش دهید."
-            hourlyRate < 600_000 -> "نرخ ساعتی شما در محدوده استاندارد بازار فریلنسری ایران قرار دارد و تعادل خوبی بین سود و جذب کارفرما ایجاد می‌کند."
+            hourlyRate < 250_000L -> "نرخ ساعتی شما اقتصادی است. برای پوشش هزینه‌های غیرقابل‌پیش‌بینی، کم‌کم نرخ پروژه‌های جدید را ۲۰٪ افزایش دهید."
+            hourlyRate < 600_000L -> "نرخ ساعتی شما در محدوده استاندارد بازار فریلنسری ایران قرار دارد و تعادل خوبی بین سود و جذب کارفرما ایجاد می‌کند."
             else -> "نرخ ساعتی شما ممتاز (پریمیوم) است. برای حفظ این نرخ، روی ارائه پورتفولیوی بی‌نقص و برندسازی شخصی تمرکز کنید."
         }
 
         return RateCalculationOutput(
             hourlyRateToman = hourlyRate,
-            dailyRateToman = dailyRate,
-            minimumProjectRateToman = minimumProjectRate,
-            totalAnnualTargetToman = annualTargetWithSavings,
+            dailyRateToman = asNonNegativeLong(dailyValue),
+            minimumProjectRateToman = asNonNegativeLong(minimumProjectValue),
+            totalAnnualTargetToman = asNonNegativeLong(annualTarget),
             adviceText = advice
         )
     }

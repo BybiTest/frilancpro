@@ -266,6 +266,7 @@ class FreelanceViewModel(
         }
         // Called after the selected store's billing flow verifies the purchase.
         repository.upgradeToVip()
+        _showVipModal.value = false
         val storeName = if (com.example.BuildConfig.STORE_FLAVOR == "myket") "مایکت" else "کافه‌بازار"
         _uiNotice.value = when (productId) {
             "vip_monthly" -> "اشتراک یک‌ماهه VIP توسط $storeName تأیید شد."
