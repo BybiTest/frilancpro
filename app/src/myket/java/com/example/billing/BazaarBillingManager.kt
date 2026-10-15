@@ -55,12 +55,17 @@ class BazaarBillingManager(
                         // automatic no-op restore here.
                         onMessage("اتصال پرداخت مایکت برقرار شد.")
                     } else {
+                        // Clear the failed client so a later connect() can retry.
+                        if (helper === client) helper = null
+                        runCatching { client.dispose() }
+                            .onFailure { error -> Log.w(TAG, "Error disposing failed Myket client", error) }
                         onMessage("اتصال پرداخت مایکت برقرار نشد: ${result.message}")
                     }
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Myket billing setup failed", e)
+            helper = null
             connected = false
             onConnectionChanged(false)
             onMessage("راه‌اندازی پرداخت مایکت ناموفق بود؛ لطفاً دوباره تلاش کنید.")
