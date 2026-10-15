@@ -50,8 +50,10 @@ class BazaarBillingManager(
                     connected = result.isSuccess()
                     onConnectionChanged(connected)
                     if (connected) {
+                        // MainActivity observes this connection state and starts exactly one
+                        // restore request with the UI callback; don't race it with an
+                        // automatic no-op restore here.
                         onMessage("اتصال پرداخت مایکت برقرار شد.")
-                        restoreSubscriptions()
                     } else {
                         onMessage("اتصال پرداخت مایکت برقرار نشد: ${result.message}")
                     }
