@@ -80,17 +80,17 @@ class FreelanceRepository(context: Context? = null) {
         loadSavedResumes() ?: listOf(
             ResumeData(
                 id = "default_1",
-                title = "رزومه تخصصی دیزاین سیستم و UI/UX",
-                fullName = "علی رضایی",
-                jobTitle = "طراح ارشد محصول و رابط کاربری (UI/UX)",
-                bio = "متخصص طراحی سیستم‌های طراحی منسجم و بهینه‌سازی تجربه کاربر برای محصولات مقیاس‌پذیر با بیش از ۵ سال سابقه دورکاری بین‌المللی."
+                title = "رزومه جدید فارسی",
+                fullName = "",
+                jobTitle = "",
+                bio = ""
             ),
             ResumeData(
                 id = "default_2",
-                title = "رزومه فریلنسری بین‌المللی (انگلیسی)",
-                fullName = "Ali Rezaei",
-                jobTitle = "Senior Product & UI/UX Designer",
-                bio = "Crafting high-converting digital products, mobile apps, and robust design systems for global clients on Upwork and Contra."
+                title = "رزومه جدید انگلیسی",
+                fullName = "",
+                jobTitle = "",
+                bio = ""
             )
         )
     )
