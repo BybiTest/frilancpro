@@ -24,6 +24,7 @@ class BazaarBillingManager(
     private var connected = false
     private var disposed = false
     private var operationInProgress = false
+    private val validVipProducts = setOf("vip_monthly", "vip_quarterly", "vip_yearly")
 
     private fun notifyIfActive(message: String) {
         if (disposed || activity.isFinishing || activity.isDestroyed) return
@@ -31,12 +32,6 @@ class BazaarBillingManager(
             if (!disposed && !activity.isFinishing && !activity.isDestroyed) onMessage(message)
         }
     }
-
-    private val validVipProducts = setOf(
-        "vip_monthly",
-        "vip_quarterly",
-        "vip_yearly"
-    )
 
     fun connect() {
         if (disposed || activity.isFinishing || activity.isDestroyed) return
