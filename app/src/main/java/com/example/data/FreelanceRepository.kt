@@ -111,7 +111,7 @@ class FreelanceRepository(context: Context? = null) {
                 clientName = "شرکت مالی آریا",
                 description = "ساده‌سازی فرآیند انتقال وجه و افتتاح حساب آنلاین در ۳ مرحله ساده با بازخورد عالی کاربران.",
                 metrics = "۴۰٪ افزایش تراکنش‌های روزانه",
-                projectUrl = "https://dribbble.com/shots/example-1",
+                projectUrl = "",
                 tags = listOf("Figma", "Fintech", "UX Research", "Design System")
             ),
             PortfolioProject(
@@ -120,7 +120,7 @@ class FreelanceRepository(context: Context? = null) {
                 clientName = "استارتاپ داده‌گستر",
                 description = "داشبورد مدیریت کمپین‌های تبلیغاتی با نمودارهای تحلیلی و دسترسی تیمی زنده.",
                 metrics = "کاهش ۶۰ درصدی زمان آموزش کاربران جدید",
-                projectUrl = "https://dribbble.com/shots/example-2",
+                projectUrl = "",
                 tags = listOf("Dashboard", "Data Viz", "SaaS", "Tailwind UI")
             ),
             PortfolioProject(
@@ -129,7 +129,7 @@ class FreelanceRepository(context: Context? = null) {
                 clientName = "استودیو بازی نکسوس",
                 description = "طراحی بصری تیره (Dark Mode) با انیمیشن‌های میکرو و تعاملی برای گیمرها.",
                 metrics = "نرخ تبدیل ۲۸ درصدی خرید بازی",
-                projectUrl = "https://dribbble.com/shots/example-3",
+                projectUrl = "",
                 tags = listOf("Gaming", "Dark Mode", "Micro-interactions")
             )
         )
