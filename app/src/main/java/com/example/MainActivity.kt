@@ -102,10 +102,19 @@ class MainActivity : ComponentActivity() {
                                 val productId = when (planName) {
                                     "۱ ماهه" -> "vip_monthly"
                                     "۳ ماهه" -> "vip_quarterly"
-                                    else -> "vip_yearly"
+                                    "۱ ساله" -> "vip_yearly"
+                                    else -> null
                                 }
-                                billingManager.subscribe(productId) { verifiedId ->
-                                    viewModel.activateVerifiedSubscription(verifiedId)
+                                if (productId == null) {
+                                    Toast.makeText(
+                                        this,
+                                        "طرح اشتراک انتخاب‌شده معتبر نیست؛ پرداخت آغاز نشد.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                } else {
+                                    billingManager.subscribe(productId) { verifiedId ->
+                                        viewModel.activateVerifiedSubscription(verifiedId)
+                                    }
                                 }
                             }
                         },
