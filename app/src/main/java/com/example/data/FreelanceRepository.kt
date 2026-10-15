@@ -1,6 +1,7 @@
 package com.example.data
 
 import android.content.Context
+import android.util.Log
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -31,10 +32,15 @@ class FreelanceRepository(context: Context? = null) {
         val preferences = resumePreferences ?: return
         runCatching {
             val json = resumeListAdapter.toJson(resumes)
-            preferences.edit()
+            val saved = preferences.edit()
                 .putString("resumes_json", json)
                 .putString("active_resume_id", activeId)
                 .commit()
+            if (!saved) {
+                Log.e("FreelanceRepository", "Failed to persist resumes to SharedPreferences")
+            }
+        }.onFailure { error ->
+            Log.e("FreelanceRepository", "Failed to serialize or persist resumes", error)
         }
     }
 
@@ -151,9 +157,14 @@ class FreelanceRepository(context: Context? = null) {
     private fun persistClientProjects(projects: List<ClientProject>) {
         val preferences = clientProjectPreferences ?: return
         runCatching {
-            preferences.edit()
+            val saved = preferences.edit()
                 .putString("client_projects_json", clientProjectListAdapter.toJson(projects))
                 .commit()
+            if (!saved) {
+                Log.e("FreelanceRepository", "Failed to persist client projects to SharedPreferences")
+            }
+        }.onFailure { error ->
+            Log.e("FreelanceRepository", "Failed to serialize or persist client projects", error)
         }
     }
 
