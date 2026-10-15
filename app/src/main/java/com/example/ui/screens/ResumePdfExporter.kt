@@ -69,41 +69,46 @@ object ResumePdfExporter {
         var page = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
         var canvas: Canvas = page.canvas
         var y = margin
-        fun startNewPage() {
-            document.finishPage(page)
-            pageNumber++
-            page = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
-            canvas = page.canvas
-            y = margin
-        }
-        blocks.forEach { (text, type) ->
-            if (text.isBlank()) return@forEach
-            val paint = when (type) { 0 -> titlePaint; 1 -> headingPaint; else -> bodyPaint }
-            val width = contentWidth
-            val layout = StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
-                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                .setTextDirection(android.text.TextDirectionHeuristics.RTL)
-                .setIncludePad(true)
-                .setLineSpacing(2f, 1.15f)
-                .build()
-            val gap = if (type == 1) 8f else 4f
-            if (y + layout.height + gap > pageHeight - margin) startNewPage()
-            canvas.save()
-            canvas.translate(margin, y)
-            layout.draw(canvas)
-            canvas.restore()
-            y += layout.height + gap
-            if (type == 1) {
-                val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = android.graphics.Color.rgb(220, 230, 238)
-                    strokeWidth = 0.8f
-                }
-                canvas.drawLine(margin, y, pageWidth - margin, y, linePaint)
-                y += 7f
+        try {
+            fun startNewPage() {
+                document.finishPage(page)
+                pageNumber++
+                page = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create())
+                canvas = page.canvas
+                y = margin
             }
+            blocks.forEach { (text, type) ->
+                if (text.isBlank()) return@forEach
+                val paint = when (type) { 0 -> titlePaint; 1 -> headingPaint; else -> bodyPaint }
+                val layout = StaticLayout.Builder.obtain(text, 0, text.length, paint, contentWidth)
+                    .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                    .setTextDirection(android.text.TextDirectionHeuristics.RTL)
+                    .setIncludePad(true)
+                    .setLineSpacing(2f, 1.15f)
+                    .build()
+                val gap = if (type == 1) 8f else 4f
+                if (y + layout.height + gap > pageHeight - margin && y > margin) startNewPage()
+                canvas.save()
+                try {
+                    canvas.translate(margin, y)
+                    layout.draw(canvas)
+                } finally {
+                    canvas.restore()
+                }
+                y += layout.height + gap
+                if (type == 1) {
+                    val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.rgb(220, 230, 238)
+                        strokeWidth = 0.8f
+                    }
+                    canvas.drawLine(margin, y, pageWidth - margin, y, linePaint)
+                    y += 7f
+                }
+            }
+            document.finishPage(page)
+            document.writeTo(output)
+        } finally {
+            document.close()
         }
-        document.finishPage(page)
-        document.writeTo(output)
-        document.close()
     }
 }
