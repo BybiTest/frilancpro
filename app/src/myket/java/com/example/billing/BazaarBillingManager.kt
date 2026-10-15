@@ -81,16 +81,16 @@ class BazaarBillingManager(
 
     fun subscribe(productId: String, onVerifiedPurchase: (String) -> Unit) {
         if (productId !in validVipProducts) {
-            onMessage("شناسهٔ محصول VIP معتبر نیست.")
+            notifyIfActive("شناسهٔ محصول VIP معتبر نیست.")
             return
         }
         val client = helper
         if (!connected || client == null || disposed) {
-            onMessage("اتصال پرداخت مایکت آماده نیست؛ چند لحظه بعد دوباره تلاش کنید.")
+            notifyIfActive("اتصال پرداخت مایکت آماده نیست؛ چند لحظه بعد دوباره تلاش کنید.")
             return
         }
         if (operationInProgress) {
-            onMessage("یک عملیات پرداخت در حال انجام است؛ لطفاً صبر کنید.")
+            notifyIfActive("یک عملیات پرداخت در حال انجام است؛ لطفاً صبر کنید.")
             return
         }
 
@@ -126,12 +126,12 @@ class BazaarBillingManager(
                             purchase.getPackageName() != activity.packageName ||
                             purchase.getDeveloperPayload() != payload
                         ) {
-                            onMessage("اطلاعات خرید با درخواست مطابقت ندارد؛ VIP فعال نشد.")
+                            notifyIfActive("اطلاعات خرید با درخواست مطابقت ندارد؛ VIP فعال نشد.")
                             return
                         }
 
                         onVerifiedPurchase(purchase.getSku())
-                        onMessage("خرید مایکت تأیید شد.")
+                        notifyIfActive("خرید مایکت تأیید شد.")
                     }
                 },
                 payload
@@ -139,7 +139,7 @@ class BazaarBillingManager(
         } catch (e: Exception) {
             operationInProgress = false
             Log.e(TAG, "Myket purchase flow failed", e)
-            onMessage("شروع پرداخت مایکت ناموفق بود؛ لطفاً دوباره تلاش کنید.")
+            notifyIfActive("شروع پرداخت مایکت ناموفق بود؛ لطفاً دوباره تلاش کنید.")
         }
     }
 
@@ -160,7 +160,7 @@ class BazaarBillingManager(
                         operationInProgress = false
                         if (disposed) return
                         if (result.isFailure() || inventory == null) {
-                            onMessage("بازیابی خریدهای قبلی مایکت انجام نشد.")
+                            notifyIfActive("بازیابی خریدهای قبلی مایکت انجام نشد.")
                             return
                         }
 
@@ -179,7 +179,7 @@ class BazaarBillingManager(
         } catch (e: Exception) {
             operationInProgress = false
             Log.e(TAG, "Myket purchase restore failed", e)
-            onMessage("بازیابی خریدهای قبلی مایکت با خطا مواجه شد.")
+            notifyIfActive("بازیابی خریدهای قبلی مایکت با خطا مواجه شد.")
         }
     }
 
