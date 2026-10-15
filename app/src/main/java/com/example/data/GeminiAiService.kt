@@ -215,7 +215,7 @@ Check my portfolio at freelancepro.me/@alireza_ui. Let's have a quick 5-minute c
     }
 
     private suspend fun callGeminiApi(apiKey: String, promptText: String): String? {
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
         val requestJson = JSONObject().apply {
             val contents = JSONArray().apply {
                 put(JSONObject().apply {
