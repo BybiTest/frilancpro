@@ -31,8 +31,10 @@ class BazaarBillingManager(
         )
     }
     private var connection: Connection? = null
+    @Volatile private var released = false
 
     fun connect() {
+        if (released || activity.isFinishing || activity.isDestroyed) return
         val client = payment
         if (client == null) {
             onConnectionChanged(false)
@@ -42,12 +44,14 @@ class BazaarBillingManager(
         connection = client.connect {
             connectionSucceed {
                 activity.runOnUiThread {
+                    if (released || activity.isFinishing || activity.isDestroyed) return@runOnUiThread
                     onConnectionChanged(true)
                     onMessage("اتصال پرداخت کافه‌بازار برقرار شد.")
                 }
             }
             connectionFailed {
                 activity.runOnUiThread {
+                    if (released || activity.isFinishing || activity.isDestroyed) return@runOnUiThread
                     onConnectionChanged(false)
                     onMessage("اتصال به پرداخت کافه‌بازار برقرار نشد. بازار را به‌روز کنید و دوباره تلاش کنید.")
                 }
@@ -60,7 +64,7 @@ class BazaarBillingManager(
 
     fun subscribe(productId: String, onVerifiedPurchase: (String) -> Unit) {
         val client = payment
-        if (client == null || connection?.getState() != ConnectionState.Connected) {
+        if (released || activity.isFinishing || activity.isDestroyed || client == null || connection?.getState() != ConnectionState.Connected) {
             onMessage("در حال حاضر اتصال پرداخت کافه‌بازار آماده نیست.")
             return
         }
@@ -82,6 +86,7 @@ class BazaarBillingManager(
             purchaseSucceed { purchaseInfo ->
                 if (purchaseInfo.productId == productId) {
                     activity.runOnUiThread {
+                        if (released || activity.isFinishing || activity.isDestroyed) return@runOnUiThread
                         onVerifiedPurchase(purchaseInfo.productId)
                         onMessage("خرید اشتراک در کافه‌بازار تأیید شد.")
                     }
@@ -100,7 +105,7 @@ class BazaarBillingManager(
 
     fun restoreSubscriptions(onVerifiedSubscription: (String) -> Unit) {
         val client = payment
-        if (client == null || connection?.getState() != ConnectionState.Connected) return
+        if (released || activity.isFinishing || activity.isDestroyed || client == null || connection?.getState() != ConnectionState.Connected) return
 
         client.getSubscribedProducts {
             querySucceed { purchases ->
@@ -109,7 +114,9 @@ class BazaarBillingManager(
                     .map { it.productId }
                     .filter { it in validIds }
                     .distinct()
-                    .forEach(onVerifiedSubscription)
+                    .forEach { productId ->
+                        if (!released && !activity.isFinishing && !activity.isDestroyed) onVerifiedSubscription(productId)
+                    }
             }
             queryFailed {
                 onMessage("بررسی اشتراک‌های قبلی انجام نشد؛ لطفاً بعداً دوباره تلاش کنید.")
@@ -124,6 +131,7 @@ class BazaarBillingManager(
     }
 
     fun release() {
+        released = true
         disconnect()
     }
 }
