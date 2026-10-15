@@ -178,7 +178,7 @@ class BazaarBillingManager(
 
     fun disconnect() {
         connected = false
-        onConnectionChanged(false)
+        if (!activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
         val client = helper
         helper = null
         if (client != null) {
