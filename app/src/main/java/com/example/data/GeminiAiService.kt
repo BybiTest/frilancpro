@@ -114,9 +114,10 @@ class GeminiAiService {
             .filter { it.length >= 3 }
             .distinct()
             .toList()
-        val matchedKeywords = jobWords.filter { it.isNotBlank() && resumeText.contains(it, ignoreCase = true) }.take(12)
-        val missingKeywords = jobWords.filterNot { it in matchedKeywords }.take(12)
-        val score = if (jobWords.isEmpty()) 0 else (matchedKeywords.size * 100 / jobWords.size).coerceIn(0, 100)
+        val allMatchedKeywords = jobWords.filter { it.isNotBlank() && resumeText.contains(it, ignoreCase = true) }
+        val matchedKeywords = allMatchedKeywords.take(12)
+        val missingKeywords = jobWords.filterNot { it in allMatchedKeywords }.take(12)
+        val score = if (jobWords.isEmpty()) 0 else (allMatchedKeywords.size * 100 / jobWords.size).coerceIn(0, 100)
         val recommendations = buildList {
             if (missingKeywords.isNotEmpty()) {
                 add("اگر این مهارت‌ها را واقعاً دارید، نمونه و تجربهٔ قابل اثبات آن‌ها را به رزومه اضافه کنید: ${missingKeywords.take(5).joinToString("، ")}.")
@@ -127,7 +128,7 @@ class GeminiAiService {
 
         AtsScanResult(
             score = score,
-            summary = "برآورد محلی و سادهٔ تطبیق واژه‌ها: ${matchedKeywords.size} مورد از ${jobWords.size} واژهٔ متمایز شناسایی شد؛ این نتیجه تحلیل هوش مصنوعی یا تضمین استخدام نیست.",
+            summary = "برآورد محلی و سادهٔ تطبیق واژه‌ها: ${allMatchedKeywords.size} مورد از ${jobWords.size} واژهٔ متمایز شناسایی شد؛ این نتیجه تحلیل هوش مصنوعی یا تضمین استخدام نیست.",
             matchedKeywords = matchedKeywords,
             missingKeywords = missingKeywords,
             recommendations = recommendations,
