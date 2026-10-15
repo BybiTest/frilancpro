@@ -24,11 +24,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -168,7 +166,6 @@ fun FreelanceProApp(
     val colors = LocalAppColors.current
     val fontScale = LocalFontScale.current.scale
     val lang = appSettings.language
-    val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiNotice) {
@@ -371,12 +368,8 @@ fun FreelanceProApp(
 
                     AppTab.PUBLIC_PORTFOLIO -> {
                         PublicPortfolioScreen(
-                            userProfile = userProfile,
                             portfolioProjects = portfolioProjects,
-                            onAddProjectClick = { viewModel.setShowVipModal(true) },
-                            onCopyLink = {
-                                clipboardManager.setText(AnnotatedString("https://freelancepro.me/@${userProfile.publicPortfolioSlug}"))
-                            }
+                            onAddProjectClick = { viewModel.setShowVipModal(true) }
                         )
                     }
 

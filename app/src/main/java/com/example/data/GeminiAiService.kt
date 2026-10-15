@@ -94,39 +94,44 @@ class GeminiAiService {
             throw IllegalStateException("Gemini returned no usable ATS response; consumed AI credit should be refunded.")
         }
 
-        // Local fallback is used only when no API key is configured
-        val resumeSkills = resume.skills.map { it.name.lowercase() }
-        val resumeText = "${resume.bio} ${resume.jobTitle} ${resume.experiences.joinToString { it.description }}".lowercase()
-        val jobWords = jobDescription.split(" ", "،", ",", "\n", "\t").filter { it.length > 3 }
+        // Transparent offline fallback: compare real words in the resume with the job text.
+        // It is a simple local estimate, not an AI-generated or recruiter-validated score.
+        val resumeText = buildString {
+            append(resume.fullName).append(' ')
+            append(resume.jobTitle).append(' ')
+            append(resume.bio).append(' ')
+            append(resume.skills.joinToString(" ") { it.name }).append(' ')
+            append(resume.experiences.joinToString(" ") {
+                "${it.role} ${it.companyOrClient} ${it.description} ${it.highlights.joinToString(" ")}"
+            }).append(' ')
+            append(resume.educationList.joinToString(" ") { "${it.degree} ${it.institution}" }).append(' ')
+            append(resume.languages.joinToString(" "))
+        }.lowercase()
 
-        val foundKeywords = mutableListOf<String>()
-        val missingKeywords = mutableListOf<String>()
-
-        val domainKeywords = listOf("figma", "ui", "ux", "طراحی", "پروتوتایپ", "ریسرچ", "کرو", "سئو", "ریسپانسیو", "کاربر", "سیستم", "اپلیکیشن")
-        for (kw in domainKeywords) {
-            if (jobDescription.contains(kw, ignoreCase = true) || resumeText.contains(kw)) {
-                foundKeywords.add(kw)
+        val jobWords = Regex("[\\p{L}\\p{N}+#.]{3,}")
+            .findAll(jobDescription.lowercase())
+            .map { it.value.trim('.', '#', '+') }
+            .filter { it.length >= 3 }
+            .distinct()
+            .toList()
+        val matchedKeywords = jobWords.filter { it.isNotBlank() && resumeText.contains(it, ignoreCase = true) }.take(12)
+        val missingKeywords = jobWords.filterNot { it in matchedKeywords }.take(12)
+        val score = if (jobWords.isEmpty()) 0 else (matchedKeywords.size * 100 / jobWords.size).coerceIn(0, 100)
+        val recommendations = buildList {
+            if (missingKeywords.isNotEmpty()) {
+                add("اگر این مهارت‌ها را واقعاً دارید، نمونه و تجربهٔ قابل اثبات آن‌ها را به رزومه اضافه کنید: ${missingKeywords.take(5).joinToString("، ")}.")
             }
+            add("شرح دستاوردها را با نتیجه‌های قابل اندازه‌گیری و مثال‌های واقعی تقویت کنید.")
+            add("این امتیاز صرفاً برآورد واژه‌ای آفلاین است؛ برای ارزیابی کامل، کلید API هوش مصنوعی را پیکربندی کنید.")
         }
-
-        if (foundKeywords.size < 4) {
-            foundKeywords.addAll(listOf("دیزاین سیستم", "تست کاربردپذیری", "فیگما", "تحقیقات UX"))
-        }
-
-        missingKeywords.addAll(listOf("سنجش نرخ تبدیل (CRO)", "معماری اطلاعات (IA)", "مستندسازی کامپوننت‌ها"))
-
-        val calculatedScore = 75 + (foundKeywords.size * 3).coerceAtMost(20)
 
         AtsScanResult(
-            score = calculatedScore,
-            summary = "این یک برآورد اولیه و محلی است، نه تحلیل هوش مصنوعی. امتیاز $calculatedScore از ۱۰۰ فقط بر اساس چند تطبیق سادهٔ کلیدواژه محاسبه شده و ممکن است دقیق نباشد.",
-            matchedKeywords = foundKeywords.distinct().take(6),
+            score = score,
+            summary = "برآورد محلی و سادهٔ تطبیق واژه‌ها: ${matchedKeywords.size} مورد از ${jobWords.size} واژهٔ متمایز شناسایی شد؛ این نتیجه تحلیل هوش مصنوعی یا تضمین استخدام نیست.",
+            matchedKeywords = matchedKeywords,
             missingKeywords = missingKeywords,
-            recommendations = listOf(
-                "در بخش تجربیات، به جای نوشتن صرف کارهای انجام شده، دستاوردهای عددی مثل «افزایش ۳۵ درصدی رضایت کاربر» اضافه کنید.",
-                "کلمه کلیدی «تست کاربردپذیری و سنجش نرخ پرش» را در متن معرفی رزومه به کار ببرید.",
-                "فرمت فونت و سرفصل‌ها کاملاً با ربات‌های ATS سازگار است و نرخ خوانایی بالایی دارد."
-            )
+            recommendations = recommendations,
+            formattingGrade = "بررسی نشده"
         )
     }
 

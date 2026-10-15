@@ -1,6 +1,7 @@
 package com.example.data
 
 import com.example.model.RateCalculatorInput
+import com.example.model.ResumeData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -52,6 +53,18 @@ class FreelanceRepositoryRateCalculatorTest {
         assertTrue(result.dailyRateToman >= 0L)
         assertTrue(result.minimumProjectRateToman >= 0L)
         assertEquals(Long.MAX_VALUE, result.totalAnnualTargetToman)
+    }
+
+    @Test
+    fun defaultResumeDoesNotContainFabricatedPersonalOrCareerData() {
+        val resume = ResumeData()
+
+        assertEquals("", resume.fullName)
+        assertEquals("", resume.jobTitle)
+        assertEquals("", resume.email)
+        assertTrue(resume.experiences.isEmpty())
+        assertTrue(resume.educationList.isEmpty())
+        assertTrue(resume.skills.isEmpty())
     }
 
     @Test

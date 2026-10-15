@@ -36,7 +36,15 @@ jobs:
         shell: bash
         run: |
           set -eu
-          yes | "$SDKMANAGER" --licenses
+          # GitHub runners enable pipefail by default; avoid failing on yes's expected SIGPIPE.
+          set +o pipefail
+          if yes | "$SDKMANAGER" --licenses; then
+            status=0
+          else
+            status=$?
+          fi
+          set -o pipefail
+          exit "$status"
       - name: Install Android SDK packages
         shell: bash
         run: |
