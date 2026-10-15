@@ -277,11 +277,13 @@ class FreelanceRepository(context: Context? = null) {
     }
 
     fun upgradeToVip() {
-        _userProfile.update { it.copy(tier = SubscriptionTier.VIP_PRO, aiCredits = 999) }\n        persistUserProfile(_userProfile.value)
+        _userProfile.update { it.copy(tier = SubscriptionTier.VIP_PRO, aiCredits = 999) }
+        persistUserProfile(_userProfile.value)
     }
 
     fun addRewardAiCredits(amount: Int = 3) {
-        _userProfile.update { it.copy(aiCredits = (it.aiCredits.toLong() + amount.coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) }\n        persistUserProfile(_userProfile.value)
+        _userProfile.update { it.copy(aiCredits = (it.aiCredits.toLong() + amount.coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) }
+        persistUserProfile(_userProfile.value)
     }
 
     fun consumeAiCredit(): Boolean {
