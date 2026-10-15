@@ -53,22 +53,39 @@ class GeminiAiService {
                 val responseJson = callGeminiApi(apiKey, prompt)
                 if (responseJson != null) {
                     val root = JSONObject(extractJsonFromResponse(responseJson))
-                    val score = root.optInt("score", 84)
-                    val summary = root.optString("summary", "رزومه تطابق بسیار خوبی با نیازمندی‌های این پروژه فریلنسری دارد.")
-                    val matchedArray = root.optJSONArray("matchedKeywords") ?: JSONArray()
-                    val missingArray = root.optJSONArray("missingKeywords") ?: JSONArray()
-                    val recsArray = root.optJSONArray("recommendations") ?: JSONArray()
+                    val score = root.optInt("score", -1)
+                    val summary = root.optString("summary", "").trim()
+                    val matchedArray = root.optJSONArray("matchedKeywords")
+                        ?: throw IllegalStateException("Gemini ATS response is missing matchedKeywords.")
+                    val missingArray = root.optJSONArray("missingKeywords")
+                        ?: throw IllegalStateException("Gemini ATS response is missing missingKeywords.")
+                    val recsArray = root.optJSONArray("recommendations")
+                        ?: throw IllegalStateException("Gemini ATS response is missing recommendations.")
 
-                    val matched = List(matchedArray.length()) { matchedArray.getString(it) }
-                    val missing = List(missingArray.length()) { missingArray.getString(it) }
-                    val recs = List(recsArray.length()) { recsArray.getString(it) }
+                    fun readStringArray(array: JSONArray): List<String> =
+                        List(array.length()) { index ->
+                            array.optString(index, "").trim().also { value ->
+                                if (value.isBlank()) {
+                                    throw IllegalStateException("Gemini ATS response contains an empty list item.")
+                                }
+                            }
+                        }
+
+                    val matched = readStringArray(matchedArray)
+                    val missing = readStringArray(missingArray)
+                    val recs = readStringArray(recsArray)
+                    if (score !in 0..100 || summary.isBlank() || matched.isEmpty() ||
+                        missing.isEmpty() || recs.isEmpty()
+                    ) {
+                        throw IllegalStateException("Gemini ATS response is incomplete or invalid.")
+                    }
 
                     return@withContext AtsScanResult(
                         score = score,
                         summary = summary,
-                        matchedKeywords = matched.ifEmpty { listOf("Figma", "Design System", "UI/UX", "User Research") },
-                        missingKeywords = missing.ifEmpty { listOf("تست A/B", "میکرو اینترکشن", "روانشناسی رفتار کاربر") },
-                        recommendations = recs.ifEmpty { defaultAtsRecommendations }
+                        matchedKeywords = matched,
+                        missingKeywords = missing,
+                        recommendations = recs
                     )
                 }
             } catch (e: Exception) {
