@@ -19,27 +19,32 @@ class TapsellAdsManager(
 ) {
     private val appKey = BuildConfig.TAPSELL_APP_KEY.trim()
     @Volatile private var initialized = false
+    @Volatile private var released = false
 
     fun initialize() {
+        if (released || activity.isFinishing || activity.isDestroyed) return
         if (appKey.isBlank()) {
             onMessage("کلید برنامه تپسل در GitHub Actions تنظیم نشده است؛ تبلیغات فعال نشد.")
             return
         }
         TapsellPlus.initialize(activity, appKey, object : TapsellPlusInitListener {
             override fun onInitializeSuccess(adNetworks: AdNetworks) {
+                if (released || activity.isFinishing || activity.isDestroyed) return
                 initialized = true
                 onMessage("اتصال تپسل برقرار شد.")
             }
 
             override fun onInitializeFailed(adNetworks: AdNetworks, error: AdNetworkError) {
                 initialized = false
-                onMessage("راه‌اندازی تپسل ناموفق بود: ${error.errorMessage}")
+                if (!released && !activity.isFinishing && !activity.isDestroyed) {
+                    onMessage("راه‌اندازی تپسل ناموفق بود: ${error.errorMessage}")
+                }
             }
         })
     }
 
     fun showRewarded(onRewarded: () -> Unit) {
-        if (!initialized) {
+        if (released || activity.isFinishing || activity.isDestroyed || !initialized) {
             onMessage("تبلیغ جایزه‌ای آماده نیست؛ اعتباری اضافه نشد.")
             return
         }
@@ -49,6 +54,7 @@ class TapsellAdsManager(
             object : AdRequestCallback() {
                 override fun response(ad: TapsellPlusAdModel) {
                     super.response(ad)
+                    if (released || activity.isFinishing || activity.isDestroyed) return
                     val rewardDelivered = AtomicBoolean(false)
                     TapsellPlus.showRewardedVideoAd(
                         activity,
@@ -57,14 +63,18 @@ class TapsellAdsManager(
                             override fun onRewarded(adModel: TapsellPlusAdModel) {
                                 super.onRewarded(adModel)
                                 if (rewardDelivered.compareAndSet(false, true)) {
-                                    activity.runOnUiThread { onRewarded() }
+                                    activity.runOnUiThread {
+                                        if (!released && !activity.isFinishing && !activity.isDestroyed) onRewarded()
+                                    }
                                 }
                             }
 
                             override fun onError(error: TapsellPlusErrorModel) {
                                 super.onError(error)
                                 activity.runOnUiThread {
-                                    onMessage("نمایش تبلیغ با خطا روبه‌رو شد؛ اعتباری اضافه نشد.")
+                                    if (!released && !activity.isFinishing && !activity.isDestroyed) {
+                                        onMessage("نمایش تبلیغ با خطا روبه‌رو شد؛ اعتباری اضافه نشد.")
+                                    }
                                 }
                             }
                         }
@@ -73,7 +83,9 @@ class TapsellAdsManager(
 
                 override fun error(message: String) {
                     activity.runOnUiThread {
-                        onMessage("تبلیغ جایزه‌ای دریافت نشد: $message")
+                        if (!released && !activity.isFinishing && !activity.isDestroyed) {
+                            onMessage("تبلیغ جایزه‌ای دریافت نشد: $message")
+                        }
                     }
                 }
             }
@@ -81,7 +93,7 @@ class TapsellAdsManager(
     }
 
     fun showInterstitial() {
-        if (!initialized) {
+        if (released || activity.isFinishing || activity.isDestroyed || !initialized) {
             onMessage("تبلیغات تپسل هنوز آماده نیست.")
             return
         }
@@ -91,6 +103,7 @@ class TapsellAdsManager(
             object : AdRequestCallback() {
                 override fun response(ad: TapsellPlusAdModel) {
                     super.response(ad)
+                    if (released || activity.isFinishing || activity.isDestroyed) return
                     TapsellPlus.showInterstitialAd(
                         activity,
                         ad.responseId,
@@ -110,6 +123,11 @@ class TapsellAdsManager(
                 }
             }
         )
+    }
+
+    fun release() {
+        released = true
+        initialized = false
     }
 
     companion object {
