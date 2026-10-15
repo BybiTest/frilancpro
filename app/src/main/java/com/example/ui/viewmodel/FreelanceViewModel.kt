@@ -47,7 +47,7 @@ class FreelanceViewModel(
             fontScale = runCatching { FontScale.valueOf(settingsPreferences.getString("font_scale", defaults.fontScale.name) ?: defaults.fontScale.name) }.getOrDefault(defaults.fontScale),
             themeColor = runCatching { ThemeColorChoice.valueOf(settingsPreferences.getString("theme_color", defaults.themeColor.name) ?: defaults.themeColor.name) }.getOrDefault(defaults.themeColor),
             isDarkMode = settingsPreferences.getBoolean("dark_mode", defaults.isDarkMode),
-            paymentGateway = runCatching { PaymentGateway.valueOf(settingsPreferences.getString("payment_gateway", defaults.paymentGateway.name) ?: defaults.paymentGateway.name) }.getOrDefault(defaults.paymentGateway)
+            paymentGateway = if (com.example.BuildConfig.STORE_FLAVOR == "myket") PaymentGateway.MYKET else PaymentGateway.CAFE_BAZAAR
         )
     }
 
@@ -151,7 +151,16 @@ class FreelanceViewModel(
     }
 
     fun setPaymentGateway(gateway: PaymentGateway) {
-        _appSettings.update { it.copy(paymentGateway = gateway) }
+        val supportedGateway = if (com.example.BuildConfig.STORE_FLAVOR == "myket") PaymentGateway.MYKET else PaymentGateway.CAFE_BAZAAR
+        if (gateway != supportedGateway) {
+            _uiNotice.value = if (supportedGateway == PaymentGateway.MYKET) {
+                "این نسخه فقط از پرداخت مایکت پشتیبانی می‌کند."
+            } else {
+                "این نسخه فقط از پرداخت کافه‌بازار پشتیبانی می‌کند."
+            }
+            return
+        }
+        _appSettings.update { it.copy(paymentGateway = supportedGateway) }
         persistAppSettings(_appSettings.value)
     }
 

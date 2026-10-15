@@ -459,12 +459,12 @@ fun SettingsScreen(
                         )
 
                         SubscriptionPlanRow(
-                            title = if (lang == AppLanguage.PERSIAN) "اشتراک سالانه (تخفیف ویژه VIP)" else "1-Year VIP (Best Value)",
+                            title = if (lang == AppLanguage.PERSIAN) "اشتراک سالانه VIP" else "1-Year VIP Plan",
                             price = if (lang == AppLanguage.PERSIAN) "قیمت در فروشگاه" else "Price in store",
                             isBestValue = true,
                             colors = colors,
                             fontScale = fontScale,
-                            onClick = { onPurchasePlan(appSettings.paymentGateway, "سالانه") }
+                            onClick = { onPurchasePlan(appSettings.paymentGateway, "۱ ساله") }
                         )
                     }
                 }
