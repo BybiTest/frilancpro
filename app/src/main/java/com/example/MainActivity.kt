@@ -84,10 +84,20 @@ class MainActivity : ComponentActivity() {
                         appSettings = appSettings,
                         billingConnected = billingConnected,
                         onPurchaseSubscription = { gateway, planName ->
-                            if (BuildConfig.STORE_FLAVOR == "myket") {
-                                Toast.makeText(this, "پرداخت مایکت هنوز به SDK و محصولات این برنامه متصل نشده است؛ خرید انجام نشد.", Toast.LENGTH_LONG).show()
-                            } else if (gateway != PaymentGateway.CAFE_BAZAAR) {
-                                Toast.makeText(this, "در نسخه کافه‌بازار، خرید فقط از درگاه کافه‌بازار پشتیبانی می‌شود.", Toast.LENGTH_LONG).show()
+                            val expectedGateway = if (BuildConfig.STORE_FLAVOR == "myket") {
+                                PaymentGateway.MYKET
+                            } else {
+                                PaymentGateway.CAFE_BAZAAR
+                            }
+                            if (gateway != expectedGateway) {
+                                Toast.makeText(
+                                    this,
+                                    if (expectedGateway == PaymentGateway.MYKET)
+                                        "در نسخه مایکت، خرید فقط از درگاه مایکت پشتیبانی می‌شود."
+                                    else
+                                        "در نسخه کافه‌بازار، خرید فقط از درگاه کافه‌بازار پشتیبانی می‌شود.",
+                                    Toast.LENGTH_LONG
+                                ).show()
                             } else {
                                 val productId = when (planName) {
                                     "۱ ماهه" -> "vip_monthly"
