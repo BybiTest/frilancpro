@@ -38,7 +38,7 @@ class BazaarBillingManager(
         val client = payment
         if (client == null) {
             onConnectionChanged(false)
-            onMessage("کلید عمومی پرداخت کافه‌بازار در تنظیمات Build موجود نیست.")
+            notifyIfActive("کلید عمومی پرداخت کافه‌بازار در تنظیمات Build موجود نیست.")
             return
         }
         connection = client.connect {
@@ -67,7 +67,7 @@ class BazaarBillingManager(
     fun subscribe(productId: String, onVerifiedPurchase: (String) -> Unit) {
         val client = payment
         if (released || activity.isFinishing || activity.isDestroyed || client == null || connection?.getState() != ConnectionState.Connected) {
-            onMessage("در حال حاضر اتصال پرداخت کافه‌بازار آماده نیست.")
+            notifyIfActive("در حال حاضر اتصال پرداخت کافه‌بازار آماده نیست.")
             return
         }
 
@@ -129,7 +129,7 @@ class BazaarBillingManager(
     fun disconnect() {
         connection?.disconnect()
         connection = null
-        if (!activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
+        if (!released && !activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
     }
 
     private fun notifyIfActive(message: String) {
