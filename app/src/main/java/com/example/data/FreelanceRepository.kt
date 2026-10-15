@@ -289,7 +289,8 @@ class FreelanceRepository(context: Context? = null) {
     fun consumeAiCredit(): Boolean {
         if (_userProfile.value.tier == SubscriptionTier.VIP_PRO) return true
         if (_userProfile.value.aiCredits > 0) {
-            _userProfile.update { it.copy(aiCredits = it.aiCredits - 1) }\n            persistUserProfile(_userProfile.value)
+            _userProfile.update { it.copy(aiCredits = it.aiCredits - 1) }
+            persistUserProfile(_userProfile.value)
             return true
         }
         return false
