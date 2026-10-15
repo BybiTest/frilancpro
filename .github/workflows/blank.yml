@@ -1,17 +1,6 @@
 name: Android Build
 
 on:
-  push:
-    branches:
-      - main
-      - fix/real-features-audit
-      - fix/persist-resume-data
-  pull_request:
-    branches:
-      - main
-    types:
-      - opened
-      - reopened
   workflow_dispatch:
 
 permissions:
