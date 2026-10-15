@@ -32,6 +32,7 @@ class BazaarBillingManager(
     }
     private var connection: Connection? = null
     @Volatile private var released = false
+    private val validVipProducts = setOf("vip_monthly", "vip_quarterly", "vip_yearly")
 
     fun connect() {
         if (released || activity.isFinishing || activity.isDestroyed) return
@@ -65,6 +66,10 @@ class BazaarBillingManager(
     }
 
     fun subscribe(productId: String, onVerifiedPurchase: (String) -> Unit) {
+        if (productId !in validVipProducts) {
+            notifyIfActive("شناسهٔ محصول VIP معتبر نیست؛ پرداخت آغاز نشد.")
+            return
+        }
         val client = payment
         if (released || activity.isFinishing || activity.isDestroyed || client == null || connection?.getState() != ConnectionState.Connected) {
             notifyIfActive("در حال حاضر اتصال پرداخت کافه‌بازار آماده نیست.")
