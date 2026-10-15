@@ -89,11 +89,35 @@ jobs:
         run: |
           set -euo pipefail
           gradle --no-daemon :app:testBazaarDebugUnitTest :app:testMyketDebugUnitTest :app:assembleBazaarDebug :app:assembleBazaarRelease :app:bundleBazaarRelease :app:assembleMyketDebug :app:assembleMyketRelease :app:bundleMyketRelease
+      - name: Generate Cafe Bazaar BIN
+        shell: bash
+        env:
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          BUNDLE_SIGNER_VERSION="0.1.14"
+          BUNDLE_SIGNER_JAR="$RUNNER_TEMP/bundlesigner-${BUNDLE_SIGNER_VERSION}.jar"
+          curl --fail --location --silent --show-error \
+            "https://github.com/cafebazaar/bundle-signer/releases/download/v${BUNDLE_SIGNER_VERSION}/bundlesigner-${BUNDLE_SIGNER_VERSION}.jar" \
+            --output "$BUNDLE_SIGNER_JAR"
+          test -s "$BUNDLE_SIGNER_JAR"
+          mkdir -p app/build/outputs/bin/bazaar
+          java -Xmx4g -jar "$BUNDLE_SIGNER_JAR" genbin -v \
+            --bundle app/build/outputs/bundle/bazaarRelease/app-bazaar-release.aab \
+            --bin app/build/outputs/bin/bazaar/ \
+            --v2-signing-enabled true \
+            --v3-signing-enabled false \
+            --ks "$KEYSTORE_PATH" \
+            --ks-key-alias upload \
+            --ks-pass env:STORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD
+          test -s app/build/outputs/bin/bazaar/app-bazaar-release.bin
       - name: Verify APK and AAB outputs
         shell: bash
         run: |
           set -euo pipefail
-          for path in app/build/outputs/apk/bazaar/debug/app-bazaar-debug.apk app/build/outputs/apk/bazaar/release/app-bazaar-release.apk app/build/outputs/bundle/bazaarRelease/app-bazaar-release.aab app/build/outputs/apk/myket/debug/app-myket-debug.apk app/build/outputs/apk/myket/release/app-myket-release.apk app/build/outputs/bundle/myketRelease/app-myket-release.aab; do
+          for path in app/build/outputs/apk/bazaar/debug/app-bazaar-debug.apk app/build/outputs/apk/bazaar/release/app-bazaar-release.apk app/build/outputs/bundle/bazaarRelease/app-bazaar-release.aab app/build/outputs/bin/bazaar/app-bazaar-release.bin app/build/outputs/apk/myket/debug/app-myket-debug.apk app/build/outputs/apk/myket/release/app-myket-release.apk app/build/outputs/bundle/myketRelease/app-myket-release.aab; do
             test -s "$path" || { echo "::error::Missing build output: $path"; exit 1; }
           done
           ls -lh app/build/outputs/apk/bazaar/debug/app-bazaar-debug.apk app/build/outputs/apk/bazaar/release/app-bazaar-release.apk app/build/outputs/bundle/bazaarRelease/app-bazaar-release.aab app/build/outputs/apk/myket/debug/app-myket-debug.apk app/build/outputs/apk/myket/release/app-myket-release.apk app/build/outputs/bundle/myketRelease/app-myket-release.aab
@@ -116,6 +140,13 @@ jobs:
         with:
           name: freelancepro-bazaar-release-aab
           path: app/build/outputs/bundle/bazaarRelease/app-bazaar-release.aab
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Bazaar release BIN
+        uses: actions/upload-artifact@v4
+        with:
+          name: freelancepro-bazaar-release-bin
+          path: app/build/outputs/bin/bazaar/app-bazaar-release.bin
           if-no-files-found: error
           retention-days: 14
       - name: Upload Myket debug APK
