@@ -186,6 +186,11 @@ class FreelanceViewModel(
     }
 
     fun runAtsAnalysis(jobDescription: String) {
+        if (_isAtsScanning.value) return
+        if (jobDescription.isBlank()) {
+            _uiNotice.value = "ابتدا شرح موقعیت شغلی را وارد کنید."
+            return
+        }
         if (!repository.consumeAiCredit()) {
             _showVipModal.value = true
             return
@@ -206,6 +211,11 @@ class FreelanceViewModel(
     }
 
     fun generateProposal(projectTitle: String, projectDetails: String, tone: String) {
+        if (_isGeneratingProposal.value) return
+        if (projectTitle.isBlank() || projectDetails.isBlank()) {
+            _uiNotice.value = "عنوان پروژه و شرح نیاز کارفرما را وارد کنید."
+            return
+        }
         if (!repository.consumeAiCredit()) {
             _showVipModal.value = true
             return
