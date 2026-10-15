@@ -39,10 +39,10 @@ class BazaarBillingManager(
     )
 
     fun connect() {
-        if (disposed) return
+        if (disposed || activity.isFinishing || activity.isDestroyed) return
         if (rsaKey.isBlank()) {
             connected = false
-            onConnectionChanged(false)
+            if (!activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
             notifyIfActive("کلید عمومی مایکت در تنظیمات Build موجود نیست؛ خرید فعال نشد.")
             return
         }
@@ -74,7 +74,7 @@ class BazaarBillingManager(
             Log.e(TAG, "Myket billing setup failed", e)
             helper = null
             connected = false
-            onConnectionChanged(false)
+            if (!activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
             notifyIfActive("راه‌اندازی پرداخت مایکت ناموفق بود؛ لطفاً دوباره تلاش کنید.")
         }
     }
@@ -106,9 +106,9 @@ class BazaarBillingManager(
                         purchase: Purchase?
                     ) {
                         operationInProgress = false
-                        if (disposed) return
+                        if (disposed || activity.isFinishing || activity.isDestroyed) return
                         if (result.isFailure() || purchase == null) {
-                            onMessage(
+                            notifyIfActive(
                                 if (result.getResponse() == IabHelper.BILLING_RESPONSE_RESULT_USER_CANCELED) {
                                     "پرداخت لغو شد؛ VIP فعال نشد."
                                 } else {
@@ -188,7 +188,7 @@ class BazaarBillingManager(
 
     fun disconnect() {
         connected = false
-        if (!activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
+        if (!disposed && !activity.isFinishing && !activity.isDestroyed) onConnectionChanged(false)
         val client = helper
         helper = null
         if (client != null) {
