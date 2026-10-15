@@ -39,7 +39,42 @@ class FreelanceRepository(context: Context? = null) {
     }
 
 
-    private val _userProfile = MutableStateFlow(UserProfile())
+    private val profilePreferences = context?.applicationContext
+        ?.getSharedPreferences("freelancepro_user_profile", Context.MODE_PRIVATE)
+
+    private fun loadUserProfile(): UserProfile {
+        val preferences = profilePreferences ?: return UserProfile()
+        val defaults = UserProfile()
+        return UserProfile(
+            username = preferences.getString("username", defaults.username) ?: defaults.username,
+            displayName = preferences.getString("display_name", defaults.displayName) ?: defaults.displayName,
+            email = preferences.getString("email", defaults.email) ?: defaults.email,
+            tier = runCatching {
+                SubscriptionTier.valueOf(preferences.getString("tier", defaults.tier.name) ?: defaults.tier.name)
+            }.getOrDefault(defaults.tier),
+            aiCredits = preferences.getInt("ai_credits", defaults.aiCredits).coerceAtLeast(0),
+            publicPortfolioSlug = preferences.getString("portfolio_slug", defaults.publicPortfolioSlug) ?: defaults.publicPortfolioSlug,
+            isPortfolioPublic = preferences.getBoolean("portfolio_public", defaults.isPortfolioPublic),
+            portfolioViewsCount = preferences.getInt("portfolio_views", defaults.portfolioViewsCount).coerceAtLeast(0),
+            clientContactCount = preferences.getInt("client_contacts", defaults.clientContactCount).coerceAtLeast(0)
+        )
+    }
+
+    private fun persistUserProfile(profile: UserProfile) {
+        profilePreferences?.edit()
+            ?.putString("username", profile.username)
+            ?.putString("display_name", profile.displayName)
+            ?.putString("email", profile.email)
+            ?.putString("tier", profile.tier.name)
+            ?.putInt("ai_credits", profile.aiCredits.coerceAtLeast(0))
+            ?.putString("portfolio_slug", profile.publicPortfolioSlug)
+            ?.putBoolean("portfolio_public", profile.isPortfolioPublic)
+            ?.putInt("portfolio_views", profile.portfolioViewsCount.coerceAtLeast(0))
+            ?.putInt("client_contacts", profile.clientContactCount.coerceAtLeast(0))
+            ?.apply()
+    }
+
+    private val _userProfile = MutableStateFlow(loadUserProfile())
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
     private val _resumes = MutableStateFlow(
@@ -217,17 +252,17 @@ class FreelanceRepository(context: Context? = null) {
     }
 
     fun upgradeToVip() {
-        _userProfile.update { it.copy(tier = SubscriptionTier.VIP_PRO, aiCredits = 999) }
+        _userProfile.update { it.copy(tier = SubscriptionTier.VIP_PRO, aiCredits = 999) }\n        persistUserProfile(_userProfile.value)
     }
 
     fun addRewardAiCredits(amount: Int = 3) {
-        _userProfile.update { it.copy(aiCredits = it.aiCredits + amount) }
+        _userProfile.update { it.copy(aiCredits = (it.aiCredits.toLong() + amount.coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) }\n        persistUserProfile(_userProfile.value)
     }
 
     fun consumeAiCredit(): Boolean {
         if (_userProfile.value.tier == SubscriptionTier.VIP_PRO) return true
         if (_userProfile.value.aiCredits > 0) {
-            _userProfile.update { it.copy(aiCredits = it.aiCredits - 1) }
+            _userProfile.update { it.copy(aiCredits = it.aiCredits - 1) }\n            persistUserProfile(_userProfile.value)
             return true
         }
         return false
