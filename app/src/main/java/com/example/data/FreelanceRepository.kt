@@ -49,9 +49,8 @@ class FreelanceRepository(context: Context? = null) {
             username = preferences.getString("username", defaults.username) ?: defaults.username,
             displayName = preferences.getString("display_name", defaults.displayName) ?: defaults.displayName,
             email = preferences.getString("email", defaults.email) ?: defaults.email,
-            tier = runCatching {
-                SubscriptionTier.valueOf(preferences.getString("tier", defaults.tier.name) ?: defaults.tier.name)
-            }.getOrDefault(defaults.tier),
+            // VIP access is restored only after the store verifies an active subscription.
+            tier = defaults.tier,
             aiCredits = preferences.getInt("ai_credits", defaults.aiCredits).coerceAtLeast(0),
             publicPortfolioSlug = preferences.getString("portfolio_slug", defaults.publicPortfolioSlug) ?: defaults.publicPortfolioSlug,
             isPortfolioPublic = preferences.getBoolean("portfolio_public", defaults.isPortfolioPublic),
