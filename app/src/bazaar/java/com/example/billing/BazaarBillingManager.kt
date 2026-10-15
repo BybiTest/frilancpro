@@ -122,4 +122,8 @@ class BazaarBillingManager(
         connection = null
         onConnectionChanged(false)
     }
+
+    fun release() {
+        disconnect()
+    }
 }
