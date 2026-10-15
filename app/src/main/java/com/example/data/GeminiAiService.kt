@@ -102,7 +102,7 @@ class GeminiAiService {
 
         AtsScanResult(
             score = calculatedScore,
-            summary = "رزومه شما برای این پروژه نمره تطابق $calculatedScore از ۱۰۰ دریافت کرد. کلمات کلیدی اصلی ابزارهای طراحی به‌خوبی رعایت شده‌اند، اما نیاز به برجسته‌سازی بیشتر سنجه‌های عددی و تجاری پروژه دارید.",
+            summary = "این یک برآورد اولیه و محلی است، نه تحلیل هوش مصنوعی. امتیاز $calculatedScore از ۱۰۰ فقط بر اساس چند تطبیق سادهٔ کلیدواژه محاسبه شده و ممکن است دقیق نباشد.",
             matchedKeywords = foundKeywords.distinct().take(6),
             missingKeywords = missingKeywords,
             recommendations = listOf(
@@ -173,7 +173,7 @@ class GeminiAiService {
 ۴. بازبینی نهایی و اعمال اصلاحات تا رضایت ۱۰۰ درصدی شما
 
 یک نمونه کار دقیقاً در همین فیلد کاری دارم که می‌توانید در پروفایل عمومی من مشاهده فرمایید:
-freelancepro.me/@alireza_ui
+[لینک نمونه‌کار خود را اینجا وارد کنید]
 
 اگر زمان دارید، خوشحال می‌شوم در یک گفتگوی کوتاه، جزئیات زمان‌بندی و مراحل تحویل را با هم هماهنگ کنیم.
             """.trimIndent()
@@ -187,7 +187,7 @@ freelancepro.me/@alireza_ui
 • پشتیبانی فنی بعد از تحویل پروژه
 • گزارش پیشرفت روزانه بدون نیاز به پیگیری مکرر
 
-لینک نمونه‌کارهای فعال: freelancepro.me/@alireza_ui
+لینک نمونه‌کارهای فعال: [لینک نمونه‌کار خود را اینجا وارد کنید]
 آماده‌ام از همین فردا کار را شروع کنیم. در صورت تمایل پیام دهید تا درباره فاز اول صحبت کنیم.
             """.trimIndent()
 
@@ -200,7 +200,7 @@ Here is what I bring to the table:
 2. Clean delivery with comprehensive documentation.
 3. Fast turnaround and transparent communication.
 
-Check my portfolio at freelancepro.me/@alireza_ui. Let's have a quick 5-minute chat to discuss your milestones.
+Check my portfolio at [لینک نمونه‌کار خود را اینجا وارد کنید]. Let's have a quick 5-minute chat to discuss your milestones.
             """.trimIndent()
         }
 
@@ -211,7 +211,7 @@ Check my portfolio at freelancepro.me/@alireza_ui. Let's have a quick 5-minute c
             estimatedDays = 6,
             proposedPriceText = "برآورد منصفانه طبق فازبندی",
             tipsForWinning = listOf(
-                "پیام خود را در ۳۰ دقیقه اول انتشار آگهی ارسال کنید تا شانس دیده‌شدن ۵ برابر شود.",
+                "پیش از ارسال، متن پیشنهاد را با جزئیات واقعی پروژه و تجربهٔ خودتان تطبیق دهید.",
                 "هرگز پیشنهادهای کپی‌پیست شده نفرستید؛ حتماً نام پروژه را در پاراگراف اول بیاورید.",
                 "لینک پورتفولیوی اختصاصی خود را ضمیمه کنید تا کارفرما فوراً کیفیت شما را ببیند."
             )
