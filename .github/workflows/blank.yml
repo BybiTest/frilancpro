@@ -64,6 +64,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Build all store variants
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           BAZAAR_RSA_PUBLIC_KEY: ${{ secrets.BAZAAR_RSA_PUBLIC_KEY }}
           MYKET_RSA_PUBLIC_KEY: ${{ secrets.MYKET_RSA_PUBLIC_KEY }}
           TAPSELL_APP_KEY: ${{ secrets.TAPSELL_APP_KEY }}
