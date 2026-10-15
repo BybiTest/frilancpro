@@ -116,10 +116,9 @@ class BazaarBillingManager(
 
         client.getSubscribedProducts {
             querySucceed { purchases ->
-                val validIds = setOf("vip_monthly", "vip_quarterly", "vip_yearly")
                 purchases
                     .map { it.productId }
-                    .filter { it in validIds }
+                    .filter { it in validVipProducts }
                     .distinct()
                     .forEach { productId ->
                         if (!released && !activity.isFinishing && !activity.isDestroyed) onVerifiedSubscription(productId)
