@@ -3,6 +3,8 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -26,10 +28,11 @@ import com.example.ui.theme.*
 @Composable
 fun PublicPortfolioScreen(
     portfolioProjects: List<PortfolioProject>,
-    onAddProjectClick: () -> Unit
+    onAddProject: (PortfolioProject) -> Unit
 ) {
     val colors = LocalAppColors.current
     val fontScale = LocalFontScale.current.scale
+    var showAddProjectDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -118,7 +121,7 @@ fun PublicPortfolioScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                TextButton(onClick = onAddProjectClick) {
+                TextButton(onClick = { showAddProjectDialog = true }) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("افزودن نمونه‌کار", color = colors.primary, fontSize = (12 * fontScale).sp, fontWeight = FontWeight.Bold)
@@ -209,6 +212,65 @@ fun PublicPortfolioScreen(
         }
 
 
+    }
+    
+    if (showAddProjectDialog) {
+        var title by remember { mutableStateOf("") }
+        var category by remember { mutableStateOf("") }
+        var clientName by remember { mutableStateOf("") }
+        var description by remember { mutableStateOf("") }
+        var metrics by remember { mutableStateOf("") }
+        var projectUrl by remember { mutableStateOf("") }
+        var tags by remember { mutableStateOf("") }
+        var formError by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { showAddProjectDialog = false },
+            title = { Text("افزودن نمونه‌کار واقعی") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(value = title, onValueChange = { title = it; formError = null }, label = { Text("عنوان نمونه‌کار") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = category, onValueChange = { category = it; formError = null }, label = { Text("دسته‌بندی") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = clientName, onValueChange = { clientName = it; formError = null }, label = { Text("کارفرما یا مالک پروژه") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = description, onValueChange = { description = it; formError = null }, label = { Text("شرح کار انجام‌شده") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+                    OutlinedTextField(value = metrics, onValueChange = { metrics = it }, label = { Text("نتیجه قابل اثبات (اختیاری)") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = projectUrl, onValueChange = { projectUrl = it }, label = { Text("لینک پروژه (اختیاری)") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = tags, onValueChange = { tags = it }, label = { Text("مهارت‌ها، با ویرگول جدا کنید") }, modifier = Modifier.fillMaxWidth())
+                    formError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (title.isBlank() || category.isBlank() || clientName.isBlank() || description.isBlank()) {
+                            formError = "عنوان، دسته‌بندی، نام مالک و شرح نمونه‌کار الزامی است."
+                        } else {
+                            onAddProject(
+                                PortfolioProject(
+                                    title = title.trim(),
+                                    category = category.trim(),
+                                    clientName = clientName.trim(),
+                                    description = description.trim(),
+                                    metrics = metrics.trim(),
+                                    projectUrl = projectUrl.trim(),
+                                    tags = tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                )
+                            )
+                            showAddProjectDialog = false
+                        }
+                    }
+                ) { Text("ذخیره نمونه‌کار") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddProjectDialog = false }) { Text("انصراف") }
+            }
+        )
     }
 }
 

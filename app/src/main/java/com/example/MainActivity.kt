@@ -369,7 +369,7 @@ fun FreelanceProApp(
                     AppTab.PUBLIC_PORTFOLIO -> {
                         PublicPortfolioScreen(
                             portfolioProjects = portfolioProjects,
-                            onAddProjectClick = { viewModel.setShowVipModal(true) }
+                            onAddProject = { viewModel.addPortfolioProject(it) }
                         )
                     }
 
