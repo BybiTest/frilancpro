@@ -137,6 +137,32 @@ class FreelanceRepository(context: Context? = null) {
     )
     val portfolioProjects: StateFlow<List<PortfolioProject>> = _portfolioProjects.asStateFlow()
 
+    private val portfolioPreferences = context?.applicationContext
+        ?.getSharedPreferences("freelancepro_portfolio", Context.MODE_PRIVATE)
+    private val portfolioListAdapter = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+        .adapter<List<PortfolioProject>>(
+            Types.newParameterizedType(List::class.java, PortfolioProject::class.java)
+        )
+
+    init {
+        val savedPortfolio = portfolioPreferences?.getString("portfolio_projects_json", null)
+        if (savedPortfolio != null) {
+            runCatching { portfolioListAdapter.fromJson(savedPortfolio) }
+                .getOrNull()
+                ?.let { _portfolioProjects.value = it }
+        }
+    }
+
+    private fun persistPortfolioProjects(projects: List<PortfolioProject>) {
+        runCatching {
+            portfolioPreferences?.edit()
+                ?.putString("portfolio_projects_json", portfolioListAdapter.toJson(projects))
+                ?.apply()
+        }
+    }
+
     private val clientProjectPreferences = context?.applicationContext
         ?.getSharedPreferences("freelancepro_client_projects", Context.MODE_PRIVATE)
     private val clientProjectListAdapter = Moshi.Builder()
@@ -248,7 +274,7 @@ class FreelanceRepository(context: Context? = null) {
     }
 
     fun addPortfolioProject(item: PortfolioProject) {
-        _portfolioProjects.update { listOf(item) + it }
+        _portfolioProjects.update { (listOf(item) + it).also(::persistPortfolioProjects) }
     }
 
     fun upgradeToVip() {
