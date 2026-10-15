@@ -44,7 +44,8 @@ class TapsellAdsManager(
     }
 
     fun showRewarded(onRewarded: () -> Unit) {
-        if (released || activity.isFinishing || activity.isDestroyed || !initialized) {
+        if (released || activity.isFinishing || activity.isDestroyed) return
+        if (!initialized) {
             onMessage("تبلیغ جایزه‌ای آماده نیست؛ اعتباری اضافه نشد.")
             return
         }
