@@ -49,6 +49,9 @@ android {
     val tapsellAppKey =
       System.getenv("TAPSELL_APP_KEY").orEmpty()
 
+    val geminiApiKey =
+      System.getenv("GEMINI_API_KEY").orEmpty()
+
     buildConfigField(
       "String",
       "BAZAAR_RSA_PUBLIC_KEY",
@@ -65,6 +68,12 @@ android {
       "String",
       "TAPSELL_APP_KEY",
       "\"$tapsellAppKey\""
+    )
+
+    buildConfigField(
+      "String",
+      "GEMINI_API_KEY",
+      "\"$geminiApiKey\""
     )
   }
 
