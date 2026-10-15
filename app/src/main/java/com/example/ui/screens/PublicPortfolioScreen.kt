@@ -175,18 +175,20 @@ fun PublicPortfolioScreen(
                     Text("کارفرما: ${proj.clientName}", color = colors.textSecondary, fontSize = (12 * fontScale).sp, modifier = Modifier.padding(top = 2.dp))
                     Text(proj.description, color = colors.textPrimary, fontSize = (12 * fontScale).sp, modifier = Modifier.padding(vertical = 6.dp))
 
-                    // Metric Banner
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(colors.surfaceVariant)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("نتیجه تجاری: ${proj.metrics}", color = colors.primary, fontSize = (11 * fontScale).sp, fontWeight = FontWeight.SemiBold)
+                    if (proj.metrics.isNotBlank()) {
+                        // Metric Banner
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(colors.surfaceVariant)
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.TrendingUp, contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("نتیجه تجاری: ${proj.metrics}", color = colors.primary, fontSize = (11 * fontScale).sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
 
                     // Tags

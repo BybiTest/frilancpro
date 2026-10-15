@@ -189,18 +189,20 @@ fun ClientCrmScreen(
                         trackColor = colors.surfaceVariant
                     )
 
-                    // Follow up reminder
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(colors.surfaceVariant)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(15.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("پیگیری بعدی: ${project.nextFollowUp}", color = colors.textPrimary, fontSize = (11 * fontScale).sp)
+                    if (project.nextFollowUp.isNotBlank()) {
+                        // Follow up reminder
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(colors.surfaceVariant)
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("پیگیری بعدی: ${project.nextFollowUp}", color = colors.textPrimary, fontSize = (11 * fontScale).sp)
+                        }
                     }
 
                     // Quick status change buttons
@@ -229,8 +231,9 @@ fun ClientCrmScreen(
     if (showAddDialog) {
         var clientName by remember { mutableStateOf("") }
         var projectTitle by remember { mutableStateOf("") }
-        var budgetInput by remember { mutableStateOf("15000000") }
-        var deadline by remember { mutableStateOf("۱۰ آذر") }
+        var budgetInput by remember { mutableStateOf("") }
+        var deadline by remember { mutableStateOf("") }
+        var nextFollowUp by remember { mutableStateOf("") }
         var budgetError by remember { mutableStateOf<String?>(null) }
         var formError by remember { mutableStateOf<String?>(null) }
 
@@ -273,6 +276,12 @@ fun ClientCrmScreen(
                         label = { Text("موعد تحویل") },
                         colors = appFieldColors(colors)
                     )
+                    OutlinedTextField(
+                        value = nextFollowUp,
+                        onValueChange = { nextFollowUp = it },
+                        label = { Text("پیگیری بعدی (اختیاری)") },
+                        colors = appFieldColors(colors)
+                    )
                     formError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
                 }
             },
@@ -300,7 +309,7 @@ fun ClientCrmScreen(
                                         budgetToman = parsedBudget,
                                         deadlineDate = deadline.trim(),
                                         status = ProjectStatus.IN_PROGRESS,
-                                        nextFollowUp = "ارسال نمونه اولیه"
+                                        nextFollowUp = nextFollowUp.trim()
                                     )
                                 )
                                 showAddDialog = false
