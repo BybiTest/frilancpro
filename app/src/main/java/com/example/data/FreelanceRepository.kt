@@ -1,73 +1,175 @@
 package com.example.data
 
+import android.content.Context
+import android.util.Log
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.example.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class FreelanceRepository {
+class FreelanceRepository(context: Context? = null) {
 
-    private val _userProfile = MutableStateFlow(UserProfile())
+    private val resumePreferences = context?.applicationContext
+        ?.getSharedPreferences("freelancepro_resume_storage", Context.MODE_PRIVATE)
+    private val resumeListAdapter = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+        .adapter<List<ResumeData>>(
+            Types.newParameterizedType(List::class.java, ResumeData::class.java)
+        )
+
+    private fun loadSavedResumes(): List<ResumeData>? {
+        val json = resumePreferences?.getString("resumes_json", null) ?: return null
+        return runCatching { resumeListAdapter.fromJson(json) }.getOrNull()
+            ?.takeIf { it.isNotEmpty() }
+    }
+
+    private fun persistResumes(resumes: List<ResumeData>, activeId: String) {
+        val preferences = resumePreferences ?: return
+        runCatching {
+            val json = resumeListAdapter.toJson(resumes)
+            val saved = preferences.edit()
+                .putString("resumes_json", json)
+                .putString("active_resume_id", activeId)
+                .commit()
+            if (!saved) {
+                Log.e("FreelanceRepository", "Failed to persist resumes to SharedPreferences")
+            }
+        }.onFailure { error ->
+            Log.e("FreelanceRepository", "Failed to serialize or persist resumes", error)
+        }
+    }
+
+
+    private val profilePreferences = context?.applicationContext
+        ?.getSharedPreferences("freelancepro_user_profile", Context.MODE_PRIVATE)
+
+    private fun loadUserProfile(): UserProfile {
+        val preferences = profilePreferences ?: return UserProfile()
+        val defaults = UserProfile()
+        return UserProfile(
+            username = preferences.getString("username", defaults.username) ?: defaults.username,
+            displayName = preferences.getString("display_name", defaults.displayName) ?: defaults.displayName,
+            email = preferences.getString("email", defaults.email) ?: defaults.email,
+            // VIP access is restored only after the store verifies an active subscription.
+            tier = defaults.tier,
+            aiCredits = preferences.getInt("ai_credits", defaults.aiCredits).coerceAtLeast(0),
+            publicPortfolioSlug = preferences.getString("portfolio_slug", defaults.publicPortfolioSlug) ?: defaults.publicPortfolioSlug,
+            isPortfolioPublic = preferences.getBoolean("portfolio_public", defaults.isPortfolioPublic),
+            portfolioViewsCount = preferences.getInt("portfolio_views", defaults.portfolioViewsCount).coerceAtLeast(0),
+            clientContactCount = preferences.getInt("client_contacts", defaults.clientContactCount).coerceAtLeast(0)
+        )
+    }
+
+    private fun persistUserProfile(profile: UserProfile) {
+        profilePreferences?.edit()
+            ?.putString("username", profile.username)
+            ?.putString("display_name", profile.displayName)
+            ?.putString("email", profile.email)
+            ?.putString("tier", profile.tier.name)
+            ?.putInt("ai_credits", profile.aiCredits.coerceAtLeast(0))
+            ?.putString("portfolio_slug", profile.publicPortfolioSlug)
+            ?.putBoolean("portfolio_public", profile.isPortfolioPublic)
+            ?.putInt("portfolio_views", profile.portfolioViewsCount.coerceAtLeast(0))
+            ?.putInt("client_contacts", profile.clientContactCount.coerceAtLeast(0))
+            ?.apply()
+    }
+
+    private val _userProfile = MutableStateFlow(loadUserProfile())
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
     private val _resumes = MutableStateFlow(
-        listOf(
+        loadSavedResumes() ?: listOf(
             ResumeData(
                 id = "default_1",
-                title = "رزومه تخصصی دیزاین سیستم و UI/UX",
-                fullName = "علی رضایی",
-                jobTitle = "طراح ارشد محصول و رابط کاربری (UI/UX)",
-                bio = "متخصص طراحی سیستم‌های طراحی منسجم و بهینه‌سازی تجربه کاربر برای محصولات مقیاس‌پذیر با بیش از ۵ سال سابقه دورکاری بین‌المللی."
+                title = "رزومه جدید فارسی",
+                fullName = "",
+                jobTitle = "",
+                bio = ""
             ),
             ResumeData(
                 id = "default_2",
-                title = "رزومه فریلنسری بین‌المللی (انگلیسی)",
-                fullName = "Ali Rezaei",
-                jobTitle = "Senior Product & UI/UX Designer",
-                bio = "Crafting high-converting digital products, mobile apps, and robust design systems for global clients on Upwork and Contra."
+                title = "رزومه جدید انگلیسی",
+                fullName = "",
+                jobTitle = "",
+                bio = ""
             )
         )
     )
     val resumes: StateFlow<List<ResumeData>> = _resumes.asStateFlow()
 
-    private val _activeResume = MutableStateFlow(_resumes.value.first())
+    private val _activeResume = MutableStateFlow(
+        _resumes.value.firstOrNull {
+            it.id == resumePreferences?.getString("active_resume_id", null)
+        } ?: _resumes.value.first()
+    )
     val activeResume: StateFlow<ResumeData> = _activeResume.asStateFlow()
 
-    private val _portfolioProjects = MutableStateFlow(
-        listOf(
-            PortfolioProject(
-                title = "طراحی مجدد اپلیکیشن فین‌تک پی‌والت",
-                category = "اپلیکیشن موبایل",
-                clientName = "شرکت مالی آریا",
-                description = "ساده‌سازی فرآیند انتقال وجه و افتتاح حساب آنلاین در ۳ مرحله ساده با بازخورد عالی کاربران.",
-                metrics = "۴۰٪ افزایش تراکنش‌های روزانه",
-                projectUrl = "https://dribbble.com/shots/example-1",
-                tags = listOf("Figma", "Fintech", "UX Research", "Design System")
-            ),
-            PortfolioProject(
-                title = "طراحی داشبورد تحلیلی ابری SaaS",
-                category = "داشبورد و وب",
-                clientName = "استارتاپ داده‌گستر",
-                description = "داشبورد مدیریت کمپین‌های تبلیغاتی با نمودارهای تحلیلی و دسترسی تیمی زنده.",
-                metrics = "کاهش ۶۰ درصدی زمان آموزش کاربران جدید",
-                projectUrl = "https://dribbble.com/shots/example-2",
-                tags = listOf("Dashboard", "Data Viz", "SaaS", "Tailwind UI")
-            ),
-            PortfolioProject(
-                title = "طراحی لندینگ پیج و هویت بصری گیم‌شاپ",
-                category = "برندینگ و وب",
-                clientName = "استودیو بازی نکسوس",
-                description = "طراحی بصری تیره (Dark Mode) با انیمیشن‌های میکرو و تعاملی برای گیمرها.",
-                metrics = "نرخ تبدیل ۲۸ درصدی خرید بازی",
-                projectUrl = "https://dribbble.com/shots/example-3",
-                tags = listOf("Gaming", "Dark Mode", "Micro-interactions")
-            )
-        )
-    )
+    // Keep the initial portfolio empty: fabricated client names and performance metrics
+    // must never appear as if they were the user's real work.
+    private val _portfolioProjects = MutableStateFlow<List<PortfolioProject>>(emptyList())
     val portfolioProjects: StateFlow<List<PortfolioProject>> = _portfolioProjects.asStateFlow()
 
-    private val _clientProjects = MutableStateFlow(defaultProjects)
+    private val portfolioPreferences = context?.applicationContext
+        ?.getSharedPreferences("freelancepro_portfolio", Context.MODE_PRIVATE)
+    private val portfolioListAdapter = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+        .adapter<List<PortfolioProject>>(
+            Types.newParameterizedType(List::class.java, PortfolioProject::class.java)
+        )
+
+    init {
+        val savedPortfolio = portfolioPreferences?.getString("portfolio_projects_json", null)
+        if (savedPortfolio != null) {
+            runCatching { portfolioListAdapter.fromJson(savedPortfolio) }
+                .getOrNull()
+                ?.let { _portfolioProjects.value = it }
+        }
+    }
+
+    private fun persistPortfolioProjects(projects: List<PortfolioProject>) {
+        runCatching {
+            portfolioPreferences?.edit()
+                ?.putString("portfolio_projects_json", portfolioListAdapter.toJson(projects))
+                ?.apply()
+        }
+    }
+
+    private val clientProjectPreferences = context?.applicationContext
+        ?.getSharedPreferences("freelancepro_client_projects", Context.MODE_PRIVATE)
+    private val clientProjectListAdapter = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+        .adapter<List<ClientProject>>(
+            Types.newParameterizedType(List::class.java, ClientProject::class.java)
+        )
+
+    private fun loadSavedClientProjects(): List<ClientProject>? {
+        val json = clientProjectPreferences?.getString("client_projects_json", null) ?: return null
+        return runCatching { clientProjectListAdapter.fromJson(json) }.getOrNull()
+    }
+
+    private fun persistClientProjects(projects: List<ClientProject>) {
+        val preferences = clientProjectPreferences ?: return
+        runCatching {
+            val saved = preferences.edit()
+                .putString("client_projects_json", clientProjectListAdapter.toJson(projects))
+                .commit()
+            if (!saved) {
+                Log.e("FreelanceRepository", "Failed to persist client projects to SharedPreferences")
+            }
+        }.onFailure { error ->
+            Log.e("FreelanceRepository", "Failed to serialize or persist client projects", error)
+        }
+    }
+
+    // Start empty: sample customer/project records must never be presented as real user data.
+    private val _clientProjects = MutableStateFlow(loadSavedClientProjects() ?: emptyList())
     val clientProjects: StateFlow<List<ClientProject>> = _clientProjects.asStateFlow()
 
     val interviewScenarios = listOf(
@@ -112,12 +214,19 @@ class FreelanceRepository {
     fun updateActiveResume(updated: ResumeData) {
         _activeResume.value = updated
         _resumes.update { list ->
-            list.map { if (it.id == updated.id) updated else it }
+            if (list.any { it.id == updated.id }) {
+                list.map { if (it.id == updated.id) updated else it }
+            } else {
+                list + updated
+            }
         }
+        persistResumes(_resumes.value, updated.id)
     }
 
     fun selectResume(resume: ResumeData) {
-        _activeResume.value = resume
+        val matchingResume = _resumes.value.firstOrNull { it.id == resume.id } ?: resume
+        _activeResume.value = matchingResume
+        persistResumes(_resumes.value, matchingResume.id)
     }
 
     fun addResume(title: String) {
@@ -131,62 +240,92 @@ class FreelanceRepository {
         )
         _resumes.update { it + newResume }
         _activeResume.value = newResume
+        persistResumes(_resumes.value, newResume.id)
     }
 
     fun addClientProject(project: ClientProject) {
-        _clientProjects.update { listOf(project) + it }
+        _clientProjects.update { current ->
+            (listOf(project) + current).also(::persistClientProjects)
+        }
     }
 
     fun updateProjectStatus(projectId: String, newStatus: ProjectStatus) {
-        _clientProjects.update { list ->
-            list.map { if (it.id == projectId) it.copy(status = newStatus) else it }
+        _clientProjects.update { current ->
+            current.map { if (it.id == projectId) it.copy(status = newStatus) else it }
+                .also(::persistClientProjects)
         }
     }
 
     fun addPortfolioProject(item: PortfolioProject) {
-        _portfolioProjects.update { listOf(item) + it }
+        _portfolioProjects.update { (listOf(item) + it).also(::persistPortfolioProjects) }
     }
 
     fun upgradeToVip() {
         _userProfile.update { it.copy(tier = SubscriptionTier.VIP_PRO, aiCredits = 999) }
+        persistUserProfile(_userProfile.value)
     }
 
     fun addRewardAiCredits(amount: Int = 3) {
-        _userProfile.update { it.copy(aiCredits = it.aiCredits + amount) }
+        _userProfile.update { it.copy(aiCredits = (it.aiCredits.toLong() + amount.coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) }
+        persistUserProfile(_userProfile.value)
     }
 
     fun consumeAiCredit(): Boolean {
         if (_userProfile.value.tier == SubscriptionTier.VIP_PRO) return true
         if (_userProfile.value.aiCredits > 0) {
             _userProfile.update { it.copy(aiCredits = it.aiCredits - 1) }
+            persistUserProfile(_userProfile.value)
             return true
         }
         return false
     }
 
+    /** Returns one credit when an AI operation fails after consuming it. */
+    fun refundAiCredit() {
+        if (_userProfile.value.tier == SubscriptionTier.VIP_PRO) return
+        _userProfile.update {
+            it.copy(aiCredits = (it.aiCredits.toLong() + 1L)
+                .coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        }
+        persistUserProfile(_userProfile.value)
+    }
+
     fun calculateFreelanceRate(input: RateCalculatorInput): RateCalculationOutput {
-        val totalMonthlyExpense = input.monthlyLivingExpenses + input.businessExpenses
-        val annualExpense = totalMonthlyExpense * 12
-        val annualTargetWithSavings = (annualExpense * (100 + input.desiredSavingsMarginPercent)) / 100
+        // BigInteger prevents overflow when malformed or extreme values reach this calculation.
+        // Clamp inputs to sensible domain limits so negative expenses cannot produce negative prices.
+        val monthlyExpenses = java.math.BigInteger.valueOf(input.monthlyLivingExpenses.coerceAtLeast(0L))
+            .add(java.math.BigInteger.valueOf(input.businessExpenses.coerceAtLeast(0L)))
+        val annualExpenses = monthlyExpenses.multiply(java.math.BigInteger.valueOf(12L))
+        val marginPercent = input.desiredSavingsMarginPercent.coerceIn(0, 500)
+        val annualTarget = annualExpenses
+            .multiply(java.math.BigInteger.valueOf((100 + marginPercent).toLong()))
+            .divide(java.math.BigInteger.valueOf(100L))
 
-        val workingWeeks = (52 - input.vacationWeeksPerYear).coerceAtLeast(1)
-        val annualBillableHours = (workingWeeks * input.billableHoursPerWeek).coerceAtLeast(1)
+        val workingWeeks = (52 - input.vacationWeeksPerYear.coerceIn(0, 51)).coerceAtLeast(1)
+        val billableHoursPerWeek = input.billableHoursPerWeek.coerceIn(1, 80)
+        val annualBillableHours = java.math.BigInteger.valueOf(workingWeeks.toLong())
+            .multiply(java.math.BigInteger.valueOf(billableHoursPerWeek.toLong()))
+            .max(java.math.BigInteger.ONE)
 
-        val hourlyRate = annualTargetWithSavings / annualBillableHours
-        val dailyRate = hourlyRate * 6 // Standard 6-hour intense freelance day
-        val minimumProjectRate = hourlyRate * 15 // Smallest viable freelance project
+        val hourlyValue = annualTarget.divide(annualBillableHours)
+        val dailyValue = hourlyValue.multiply(java.math.BigInteger.valueOf(6L))
+        val minimumProjectValue = hourlyValue.multiply(java.math.BigInteger.valueOf(15L))
+        val maxLong = java.math.BigInteger.valueOf(Long.MAX_VALUE)
+        fun asNonNegativeLong(value: java.math.BigInteger): Long =
+            value.max(java.math.BigInteger.ZERO).min(maxLong).toLong()
 
+        val hourlyRate = asNonNegativeLong(hourlyValue)
         val advice = when {
-            hourlyRate < 250_000 -> "نرخ ساعتی شما اقتصادی است. برای پوشش هزینه‌های غیرقابل‌پیش‌بینی، کم‌کم نرخ پروژه‌های جدید را ۲۰٪ افزایش دهید."
-            hourlyRate < 600_000 -> "نرخ ساعتی شما در محدوده استاندارد بازار فریلنسری ایران قرار دارد و تعادل خوبی بین سود و جذب کارفرما ایجاد می‌کند."
+            hourlyRate < 250_000L -> "نرخ ساعتی شما اقتصادی است. برای پوشش هزینه‌های غیرقابل‌پیش‌بینی، کم‌کم نرخ پروژه‌های جدید را ۲۰٪ افزایش دهید."
+            hourlyRate < 600_000L -> "نرخ ساعتی شما در محدوده استاندارد بازار فریلنسری ایران قرار دارد و تعادل خوبی بین سود و جذب کارفرما ایجاد می‌کند."
             else -> "نرخ ساعتی شما ممتاز (پریمیوم) است. برای حفظ این نرخ، روی ارائه پورتفولیوی بی‌نقص و برندسازی شخصی تمرکز کنید."
         }
 
         return RateCalculationOutput(
             hourlyRateToman = hourlyRate,
-            dailyRateToman = dailyRate,
-            minimumProjectRateToman = minimumProjectRate,
-            totalAnnualTargetToman = annualTargetWithSavings,
+            dailyRateToman = asNonNegativeLong(dailyValue),
+            minimumProjectRateToman = asNonNegativeLong(minimumProjectValue),
+            totalAnnualTargetToman = asNonNegativeLong(annualTarget),
             adviceText = advice
         )
     }

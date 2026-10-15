@@ -442,7 +442,7 @@ fun SettingsScreen(
                     ) {
                         SubscriptionPlanRow(
                             title = if (lang == AppLanguage.PERSIAN) "اشتراک ۱ ماهه فریلنس‌پرو" else "1-Month VIP Plan",
-                            price = if (lang == AppLanguage.PERSIAN) "۳۹,۰۰۰ تومان" else "$1.99",
+                            price = if (lang == AppLanguage.PERSIAN) "قیمت در فروشگاه" else "Price in store",
                             isBestValue = false,
                             colors = colors,
                             fontScale = fontScale,
@@ -451,7 +451,7 @@ fun SettingsScreen(
 
                         SubscriptionPlanRow(
                             title = if (lang == AppLanguage.PERSIAN) "اشتراک ۳ ماهه فریلنس‌پرو" else "3-Month VIP Plan",
-                            price = if (lang == AppLanguage.PERSIAN) "۸۹,۰۰۰ تومان" else "$4.99",
+                            price = if (lang == AppLanguage.PERSIAN) "قیمت در فروشگاه" else "Price in store",
                             isBestValue = false,
                             colors = colors,
                             fontScale = fontScale,
@@ -459,12 +459,12 @@ fun SettingsScreen(
                         )
 
                         SubscriptionPlanRow(
-                            title = if (lang == AppLanguage.PERSIAN) "اشتراک سالانه (تخفیف ویژه VIP)" else "1-Year VIP (Best Value)",
-                            price = if (lang == AppLanguage.PERSIAN) "۱۹۹,۰۰۰ تومان" else "$9.99",
+                            title = if (lang == AppLanguage.PERSIAN) "اشتراک سالانه VIP" else "1-Year VIP Plan",
+                            price = if (lang == AppLanguage.PERSIAN) "قیمت در فروشگاه" else "Price in store",
                             isBestValue = true,
                             colors = colors,
                             fontScale = fontScale,
-                            onClick = { onPurchasePlan(appSettings.paymentGateway, "سالانه") }
+                            onClick = { onPurchasePlan(appSettings.paymentGateway, "۱ ساله") }
                         )
                     }
                 }

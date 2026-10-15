@@ -3,6 +3,8 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -102,7 +104,9 @@ fun ClientCrmScreen(
         // Status Filter Chips
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilterChip(
@@ -117,7 +121,7 @@ fun ClientCrmScreen(
                     )
                 )
 
-                listOf(ProjectStatus.IN_PROGRESS, ProjectStatus.NEGOTIATING, ProjectStatus.PROPOSAL_SENT).forEach { status ->
+                ProjectStatus.entries.forEach { status ->
                     val isSelected = selectedStatusFilter == status
                     FilterChip(
                         selected = isSelected,
@@ -175,7 +179,7 @@ fun ClientCrmScreen(
 
                     // Progress bar
                     LinearProgressIndicator(
-                        progress = { project.progressPercent / 100f },
+                        progress = { project.progressPercent.coerceIn(0, 100) / 100f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
@@ -185,18 +189,20 @@ fun ClientCrmScreen(
                         trackColor = colors.surfaceVariant
                     )
 
-                    // Follow up reminder
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(colors.surfaceVariant)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(15.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("پیگیری بعدی: ${project.nextFollowUp}", color = colors.textPrimary, fontSize = (11 * fontScale).sp)
+                    if (project.nextFollowUp.isNotBlank()) {
+                        // Follow up reminder
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(colors.surfaceVariant)
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = colors.primary, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("پیگیری بعدی: ${project.nextFollowUp}", color = colors.textPrimary, fontSize = (11 * fontScale).sp)
+                        }
                     }
 
                     // Quick status change buttons
@@ -225,8 +231,11 @@ fun ClientCrmScreen(
     if (showAddDialog) {
         var clientName by remember { mutableStateOf("") }
         var projectTitle by remember { mutableStateOf("") }
-        var budgetInput by remember { mutableStateOf("15000000") }
-        var deadline by remember { mutableStateOf("۱۰ آذر") }
+        var budgetInput by remember { mutableStateOf("") }
+        var deadline by remember { mutableStateOf("") }
+        var nextFollowUp by remember { mutableStateOf("") }
+        var budgetError by remember { mutableStateOf<String?>(null) }
+        var formError by remember { mutableStateOf<String?>(null) }
 
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
@@ -235,45 +244,76 @@ fun ClientCrmScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = clientName,
-                        onValueChange = { clientName = it },
+                        onValueChange = { clientName = it; formError = null },
                         label = { Text("نام کارفرما یا شرکت") },
                         colors = appFieldColors(colors)
                     )
                     OutlinedTextField(
                         value = projectTitle,
-                        onValueChange = { projectTitle = it },
+                        onValueChange = { projectTitle = it; formError = null },
                         label = { Text("عنوان پروژه") },
                         colors = appFieldColors(colors)
                     )
                     OutlinedTextField(
                         value = budgetInput,
-                        onValueChange = { budgetInput = it },
+                        onValueChange = {
+                            budgetInput = it
+                                .replace("۰", "0").replace("۱", "1").replace("۲", "2")
+                                .replace("۳", "3").replace("۴", "4").replace("۵", "5")
+                                .replace("۶", "6").replace("۷", "7").replace("۸", "8")
+                                .replace("۹", "9")
+                                .filter { ch -> ch.isDigit() || ch == ',' || ch == '٬' || ch.isWhitespace() }
+                            budgetError = null
+                        },
                         label = { Text("مبلغ به تومان") },
+                        isError = budgetError != null,
+                        supportingText = { budgetError?.let { error -> Text(error) } },
                         colors = appFieldColors(colors)
                     )
                     OutlinedTextField(
                         value = deadline,
-                        onValueChange = { deadline = it },
+                        onValueChange = { deadline = it; formError = null },
                         label = { Text("موعد تحویل") },
                         colors = appFieldColors(colors)
                     )
+                    OutlinedTextField(
+                        value = nextFollowUp,
+                        onValueChange = { nextFollowUp = it },
+                        label = { Text("پیگیری بعدی (اختیاری)") },
+                        colors = appFieldColors(colors)
+                    )
+                    formError?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (clientName.isNotBlank() && projectTitle.isNotBlank()) {
-                            onAddProject(
-                                ClientProject(
-                                    clientName = clientName,
-                                    projectTitle = projectTitle,
-                                    budgetToman = budgetInput.toLongOrNull() ?: 10_000_000L,
-                                    deadlineDate = deadline,
-                                    status = ProjectStatus.IN_PROGRESS,
-                                    nextFollowUp = "ارسال نمونه اولیه"
+                        val normalizedBudget = budgetInput
+                            .replace(",", "").replace("٬", "").filterNot { it.isWhitespace() }
+                        val parsedBudget = normalizedBudget.toLongOrNull()
+                        when {
+                            clientName.isBlank() || projectTitle.isBlank() -> {
+                                formError = "نام کارفرما و عنوان پروژه را وارد کنید."
+                            }
+                            normalizedBudget.isBlank() || parsedBudget == null || parsedBudget <= 0L -> {
+                                budgetError = "مبلغ معتبر و بزرگ‌تر از صفر وارد کنید."
+                            }
+                            deadline.isBlank() -> {
+                                formError = "موعد تحویل را وارد کنید."
+                            }
+                            else -> {
+                                onAddProject(
+                                    ClientProject(
+                                        clientName = clientName.trim(),
+                                        projectTitle = projectTitle.trim(),
+                                        budgetToman = parsedBudget,
+                                        deadlineDate = deadline.trim(),
+                                        status = ProjectStatus.IN_PROGRESS,
+                                        nextFollowUp = nextFollowUp.trim()
+                                    )
                                 )
-                            )
-                            showAddDialog = false
+                                showAddDialog = false
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = Navy900)

@@ -4,18 +4,18 @@ import java.util.UUID
 
 data class ResumeData(
     val id: String = UUID.randomUUID().toString(),
-    val title: String = "رزومه فریلنسری عمومی",
-    val fullName: String = "علی رضایی",
-    val jobTitle: String = "طراح ارشد رابط کاربری (UI/UX) و محصول",
-    val email: String = "ali.rezaei@example.com",
-    val phone: String = "۰۹۱۲۳۴۵۶۷۸۹",
-    val city: String = "تهران / ریموت (دورکار)",
-    val websiteOrGithub: String = "https://dribbble.com/alireza",
-    val bio: String = "طراح محصول با بیش از ۵ سال تجربه در طراحی سامانه‌های مقیاس‌پذیر و اپلیکیشن‌های موبایل. تخصص در بهینه‌سازی نرخ تبدیل (CRO)، دیزاین سیستم و تحقیقات کاربر.",
-    val experiences: List<WorkExperience> = defaultExperiences,
-    val educationList: List<EducationItem> = defaultEducation,
-    val skills: List<SkillItem> = defaultSkills,
-    val languages: List<String> = listOf("فارسی (مادری)", "انگلیسی (پیشرفته C1)"),
+    val title: String = "رزومه جدید",
+    val fullName: String = "",
+    val jobTitle: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val city: String = "",
+    val websiteOrGithub: String = "",
+    val bio: String = "",
+    val experiences: List<WorkExperience> = emptyList(),
+    val educationList: List<EducationItem> = emptyList(),
+    val skills: List<SkillItem> = emptyList(),
+    val languages: List<String> = emptyList(),
     val templateId: String = "modern_clean"
 )
 

@@ -18,9 +18,9 @@ data class ClientProject(
     val budgetToman: Long,
     val deadlineDate: String,
     val status: ProjectStatus = ProjectStatus.IN_PROGRESS,
-    val nextFollowUp: String = "فردا ساعت ۱۰:۰۰",
-    val notes: String = "تحویل فاز اول و دریافت ۵۰ درصد پیش‌پرداخت",
-    val progressPercent: Int = 45
+    val nextFollowUp: String = "",
+    val notes: String = "",
+    val progressPercent: Int = 0
 )
 
 val defaultProjects = listOf(

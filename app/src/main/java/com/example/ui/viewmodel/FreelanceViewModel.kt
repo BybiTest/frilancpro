@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.FreelanceRepository
 import com.example.data.GeminiAiService
@@ -20,10 +21,11 @@ enum class AppTab(val titleFa: String, val titleEn: String) {
     SETTINGS("تنظیمات", "Settings")
 }
 
-class FreelanceViewModel(
-    private val repository: FreelanceRepository = FreelanceRepository(),
-    private val aiService: GeminiAiService = GeminiAiService()
-) : ViewModel() {
+class FreelanceViewModel(application: Application) : AndroidViewModel(application) {
+    // Keep the constructor compatible with Android's default ViewModel factories.
+    // Kotlin default parameters do not generate a Java-visible Application-only constructor.
+    private val repository = FreelanceRepository(application)
+    private val aiService = GeminiAiService()
 
     val userProfile: StateFlow<UserProfile> = repository.userProfile
     val resumes: StateFlow<List<ResumeData>> = repository.resumes
@@ -35,8 +37,31 @@ class FreelanceViewModel(
     private val _currentTab = MutableStateFlow(AppTab.RESUME_BUILDER)
     val currentTab: StateFlow<AppTab> = _currentTab.asStateFlow()
 
-    // Settings State
-    private val _appSettings = MutableStateFlow(AppSettings())
+    // Settings are stored locally so user preferences survive app restarts.
+    private val settingsPreferences = application.getSharedPreferences("freelancepro_settings", android.content.Context.MODE_PRIVATE)
+
+    private fun loadAppSettings(): AppSettings {
+        val defaults = AppSettings()
+        return AppSettings(
+            language = runCatching { AppLanguage.valueOf(settingsPreferences.getString("language", defaults.language.name) ?: defaults.language.name) }.getOrDefault(defaults.language),
+            fontScale = runCatching { FontScale.valueOf(settingsPreferences.getString("font_scale", defaults.fontScale.name) ?: defaults.fontScale.name) }.getOrDefault(defaults.fontScale),
+            themeColor = runCatching { ThemeColorChoice.valueOf(settingsPreferences.getString("theme_color", defaults.themeColor.name) ?: defaults.themeColor.name) }.getOrDefault(defaults.themeColor),
+            isDarkMode = settingsPreferences.getBoolean("dark_mode", defaults.isDarkMode),
+            paymentGateway = if (com.example.BuildConfig.STORE_FLAVOR == "myket") PaymentGateway.MYKET else PaymentGateway.CAFE_BAZAAR
+        )
+    }
+
+    private fun persistAppSettings(settings: AppSettings) {
+        settingsPreferences.edit()
+            .putString("language", settings.language.name)
+            .putString("font_scale", settings.fontScale.name)
+            .putString("theme_color", settings.themeColor.name)
+            .putBoolean("dark_mode", settings.isDarkMode)
+            .putString("payment_gateway", settings.paymentGateway.name)
+            .apply()
+    }
+
+    private val _appSettings = MutableStateFlow(loadAppSettings())
     val appSettings: StateFlow<AppSettings> = _appSettings.asStateFlow()
 
     private val _showVipModal = MutableStateFlow(false)
@@ -90,12 +115,14 @@ class FreelanceViewModel(
     // Settings actions
     fun setLanguage(lang: AppLanguage) {
         _appSettings.update { it.copy(language = lang) }
+        persistAppSettings(_appSettings.value)
         val msg = if (lang == AppLanguage.PERSIAN) "زبان برنامه به فارسی تغییر کرد." else "App language set to English."
         _uiNotice.value = msg
     }
 
     fun setFontScale(scale: FontScale) {
         _appSettings.update { it.copy(fontScale = scale) }
+        persistAppSettings(_appSettings.value)
         val msg = if (_appSettings.value.language == AppLanguage.PERSIAN)
             "اندازه قلم به «${scale.titleFa}» تنظیم شد."
         else
@@ -105,6 +132,7 @@ class FreelanceViewModel(
 
     fun setThemeColor(color: ThemeColorChoice) {
         _appSettings.update { it.copy(themeColor = color) }
+        persistAppSettings(_appSettings.value)
         val msg = if (_appSettings.value.language == AppLanguage.PERSIAN)
             "تم رنگی برنامه به «${color.titleFa}» تغییر یافت."
         else
@@ -114,6 +142,7 @@ class FreelanceViewModel(
 
     fun toggleDarkMode(isDark: Boolean) {
         _appSettings.update { it.copy(isDarkMode = isDark) }
+        persistAppSettings(_appSettings.value)
         val msg = if (_appSettings.value.language == AppLanguage.PERSIAN)
             if (isDark) "حالت شب (Dark Mode) فعال شد." else "حالت روز (Light Mode) فعال شد."
         else
@@ -122,23 +151,32 @@ class FreelanceViewModel(
     }
 
     fun setPaymentGateway(gateway: PaymentGateway) {
-        _appSettings.update { it.copy(paymentGateway = gateway) }
+        val supportedGateway = if (com.example.BuildConfig.STORE_FLAVOR == "myket") PaymentGateway.MYKET else PaymentGateway.CAFE_BAZAAR
+        if (gateway != supportedGateway) {
+            _uiNotice.value = if (supportedGateway == PaymentGateway.MYKET) {
+                "این نسخه فقط از پرداخت مایکت پشتیبانی می‌کند."
+            } else {
+                "این نسخه فقط از پرداخت کافه‌بازار پشتیبانی می‌کند."
+            }
+            return
+        }
+        _appSettings.update { it.copy(paymentGateway = supportedGateway) }
+        persistAppSettings(_appSettings.value)
     }
 
     fun simulateShowInterstitialAd() {
-        _activeAdMessage.value = "تبلیغ تمام‌صفحه تپسل/تپسی با موفقیت نمایش داده شد و بسته شد."
+        _activeAdMessage.value = "تبلیغات هنوز به SDK واقعی تپسل متصل نشده‌اند؛ در حال حاضر تبلیغی نمایش داده نمی‌شود."
     }
 
     fun simulateShowRewardedAd() {
-        repository.addRewardAiCredits(3)
-        _activeAdMessage.value = "ویدیوی جایزه‌ای تپسی کامل شد! +۳ اعتبار رایگان هوش مصنوعی اضافه شد."
-        _uiNotice.value = "🎁 ۳ اعتبار هوش مصنوعی رایگان اضافه شد."
+        // Never grant credits without a real rewarded-ad completion callback.
+        _activeAdMessage.value = "تبلیغ جایزه‌ای هنوز به SDK واقعی تپسل متصل نیست؛ اعتباری اضافه نشد."
+        _uiNotice.value = "برای دریافت اعتبار رایگان، اتصال تبلیغ جایزه‌ای باید تکمیل شود."
     }
 
     fun simulatePurchaseSubscription(gateway: PaymentGateway, planName: String) {
-        repository.upgradeToVip()
         val storeName = if (gateway == PaymentGateway.CAFE_BAZAAR) "کافه بازار" else "مایکت"
-        _uiNotice.value = "🎉 خرید اشتراک $planName از طریق درگاه $storeName با موفقیت انجام شد و اکانت VIP فعال شد!"
+        _uiNotice.value = "پرداخت $planName از طریق $storeName هنوز پیاده‌سازی نشده است؛ اشتراک فعال نشده."
     }
 
     fun updateActiveResume(updated: ResumeData) {
@@ -157,6 +195,11 @@ class FreelanceViewModel(
     }
 
     fun runAtsAnalysis(jobDescription: String) {
+        if (_isAtsScanning.value) return
+        if (jobDescription.isBlank()) {
+            _uiNotice.value = "ابتدا شرح موقعیت شغلی را وارد کنید."
+            return
+        }
         if (!repository.consumeAiCredit()) {
             _showVipModal.value = true
             return
@@ -167,6 +210,9 @@ class FreelanceViewModel(
             try {
                 val result = aiService.analyzeResumeWithAts(activeResume.value, jobDescription)
                 _atsResult.value = result
+            } catch (error: Exception) {
+                repository.refundAiCredit()
+                _uiNotice.value = "تحلیل رزومه انجام نشد؛ اعتبار مصرف‌شده بازگردانده شد."
             } finally {
                 _isAtsScanning.value = false
             }
@@ -174,6 +220,11 @@ class FreelanceViewModel(
     }
 
     fun generateProposal(projectTitle: String, projectDetails: String, tone: String) {
+        if (_isGeneratingProposal.value) return
+        if (projectTitle.isBlank() || projectDetails.isBlank()) {
+            _uiNotice.value = "عنوان پروژه و شرح نیاز کارفرما را وارد کنید."
+            return
+        }
         if (!repository.consumeAiCredit()) {
             _showVipModal.value = true
             return
@@ -189,6 +240,9 @@ class FreelanceViewModel(
                     tone = tone
                 )
                 _generatedProposal.value = proposal
+            } catch (error: Exception) {
+                repository.refundAiCredit()
+                _uiNotice.value = "ساخت پیشنهاد انجام نشد؛ اعتبار مصرف‌شده بازگردانده شد."
             } finally {
                 _isGeneratingProposal.value = false
             }
@@ -214,14 +268,24 @@ class FreelanceViewModel(
         _uiNotice.value = "نمونه کار جدید به پورتفولیو اضافه شد."
     }
 
-    fun upgradeToVip() {
+    fun activateVerifiedSubscription(productId: String) {
+        if (productId !in setOf("vip_monthly", "vip_quarterly", "vip_yearly")) {
+            _uiNotice.value = "شناسه اشتراک معتبر نیست؛ VIP فعال نشد."
+            return
+        }
+        // Called after the selected store's billing flow verifies the purchase.
         repository.upgradeToVip()
         _showVipModal.value = false
-        _uiNotice.value = "🎉 تبریک! اشتراک حرفه‌ای VIP برای شما فعال شد."
+        val storeName = if (com.example.BuildConfig.STORE_FLAVOR == "myket") "مایکت" else "کافه‌بازار"
+        _uiNotice.value = when (productId) {
+            "vip_monthly" -> "اشتراک یک‌ماهه VIP توسط $storeName تأیید شد."
+            "vip_quarterly" -> "اشتراک سه‌ماهه VIP توسط $storeName تأیید شد."
+            else -> "اشتراک یک‌ساله VIP توسط $storeName تأیید شد."
+        }
     }
-
-    fun watchRewardedAdForCredits() {
-        simulateShowRewardedAd()
+    fun grantRewardedAdCredits() {
+        repository.addRewardAiCredits(3)
         _showVipModal.value = false
+        _uiNotice.value = "تبلیغ با موفقیت تکمیل شد؛ ۳ اعتبار به حساب شما اضافه شد."
     }
 }

@@ -53,62 +53,86 @@ class GeminiAiService {
                 val responseJson = callGeminiApi(apiKey, prompt)
                 if (responseJson != null) {
                     val root = JSONObject(extractJsonFromResponse(responseJson))
-                    val score = root.optInt("score", 84)
-                    val summary = root.optString("summary", "رزومه تطابق بسیار خوبی با نیازمندی‌های این پروژه فریلنسری دارد.")
-                    val matchedArray = root.optJSONArray("matchedKeywords") ?: JSONArray()
-                    val missingArray = root.optJSONArray("missingKeywords") ?: JSONArray()
-                    val recsArray = root.optJSONArray("recommendations") ?: JSONArray()
+                    val score = root.optInt("score", -1)
+                    val summary = root.optString("summary", "").trim()
+                    val matchedArray = root.optJSONArray("matchedKeywords")
+                        ?: throw IllegalStateException("Gemini ATS response is missing matchedKeywords.")
+                    val missingArray = root.optJSONArray("missingKeywords")
+                        ?: throw IllegalStateException("Gemini ATS response is missing missingKeywords.")
+                    val recsArray = root.optJSONArray("recommendations")
+                        ?: throw IllegalStateException("Gemini ATS response is missing recommendations.")
 
-                    val matched = List(matchedArray.length()) { matchedArray.getString(it) }
-                    val missing = List(missingArray.length()) { missingArray.getString(it) }
-                    val recs = List(recsArray.length()) { recsArray.getString(it) }
+                    fun readStringArray(array: JSONArray): List<String> =
+                        List(array.length()) { index ->
+                            array.optString(index, "").trim().also { value ->
+                                if (value.isBlank()) {
+                                    throw IllegalStateException("Gemini ATS response contains an empty list item.")
+                                }
+                            }
+                        }
+
+                    val matched = readStringArray(matchedArray)
+                    val missing = readStringArray(missingArray)
+                    val recs = readStringArray(recsArray)
+                    if (score !in 0..100 || summary.isBlank() || matched.isEmpty() ||
+                        missing.isEmpty() || recs.isEmpty()
+                    ) {
+                        throw IllegalStateException("Gemini ATS response is incomplete or invalid.")
+                    }
 
                     return@withContext AtsScanResult(
                         score = score,
                         summary = summary,
-                        matchedKeywords = matched.ifEmpty { listOf("Figma", "Design System", "UI/UX", "User Research") },
-                        missingKeywords = missing.ifEmpty { listOf("تست A/B", "میکرو اینترکشن", "روانشناسی رفتار کاربر") },
-                        recommendations = recs.ifEmpty { defaultAtsRecommendations }
+                        matchedKeywords = matched,
+                        missingKeywords = missing,
+                        recommendations = recs
                     )
                 }
             } catch (e: Exception) {
-                // Fallback to intelligent local engine
+                throw IllegalStateException("Gemini ATS analysis failed; consumed AI credit should be refunded.", e)
             }
+            throw IllegalStateException("Gemini returned no usable ATS response; consumed AI credit should be refunded.")
         }
 
-        // Intelligent local domain calculation
-        val resumeSkills = resume.skills.map { it.name.lowercase() }
-        val resumeText = "${resume.bio} ${resume.jobTitle} ${resume.experiences.joinToString { it.description }}".lowercase()
-        val jobWords = jobDescription.split(" ", "،", ",", "\n", "\t").filter { it.length > 3 }
+        // Transparent offline fallback: compare real words in the resume with the job text.
+        // It is a simple local estimate, not an AI-generated or recruiter-validated score.
+        val resumeText = buildString {
+            append(resume.fullName).append(' ')
+            append(resume.jobTitle).append(' ')
+            append(resume.bio).append(' ')
+            append(resume.skills.joinToString(" ") { it.name }).append(' ')
+            append(resume.experiences.joinToString(" ") {
+                "${it.role} ${it.companyOrClient} ${it.description} ${it.highlights.joinToString(" ")}"
+            }).append(' ')
+            append(resume.educationList.joinToString(" ") { "${it.degree} ${it.institution}" }).append(' ')
+            append(resume.languages.joinToString(" "))
+        }.lowercase()
 
-        val foundKeywords = mutableListOf<String>()
-        val missingKeywords = mutableListOf<String>()
-
-        val domainKeywords = listOf("figma", "ui", "ux", "طراحی", "پروتوتایپ", "ریسرچ", "کرو", "سئو", "ریسپانسیو", "کاربر", "سیستم", "اپلیکیشن")
-        for (kw in domainKeywords) {
-            if (jobDescription.contains(kw, ignoreCase = true) || resumeText.contains(kw)) {
-                foundKeywords.add(kw)
+        val jobWords = Regex("[\\p{L}\\p{N}+#.]{3,}")
+            .findAll(jobDescription.lowercase())
+            .map { it.value.trim('.', '#', '+') }
+            .filter { it.length >= 3 }
+            .distinct()
+            .toList()
+        val allMatchedKeywords = jobWords.filter { it.isNotBlank() && resumeText.contains(it, ignoreCase = true) }
+        val matchedKeywords = allMatchedKeywords.take(12)
+        val missingKeywords = jobWords.filterNot { it in allMatchedKeywords }.take(12)
+        val score = if (jobWords.isEmpty()) 0 else (allMatchedKeywords.size * 100 / jobWords.size).coerceIn(0, 100)
+        val recommendations = buildList {
+            if (missingKeywords.isNotEmpty()) {
+                add("اگر این مهارت‌ها را واقعاً دارید، نمونه و تجربهٔ قابل اثبات آن‌ها را به رزومه اضافه کنید: ${missingKeywords.take(5).joinToString("، ")}.")
             }
+            add("شرح دستاوردها را با نتیجه‌های قابل اندازه‌گیری و مثال‌های واقعی تقویت کنید.")
+            add("این امتیاز صرفاً برآورد واژه‌ای آفلاین است؛ برای ارزیابی کامل، کلید API هوش مصنوعی را پیکربندی کنید.")
         }
-
-        if (foundKeywords.size < 4) {
-            foundKeywords.addAll(listOf("دیزاین سیستم", "تست کاربردپذیری", "فیگما", "تحقیقات UX"))
-        }
-
-        missingKeywords.addAll(listOf("سنجش نرخ تبدیل (CRO)", "معماری اطلاعات (IA)", "مستندسازی کامپوننت‌ها"))
-
-        val calculatedScore = 75 + (foundKeywords.size * 3).coerceAtMost(20)
 
         AtsScanResult(
-            score = calculatedScore,
-            summary = "رزومه شما برای این پروژه نمره تطابق $calculatedScore از ۱۰۰ دریافت کرد. کلمات کلیدی اصلی ابزارهای طراحی به‌خوبی رعایت شده‌اند، اما نیاز به برجسته‌سازی بیشتر سنجه‌های عددی و تجاری پروژه دارید.",
-            matchedKeywords = foundKeywords.distinct().take(6),
+            score = score,
+            summary = "برآورد محلی و سادهٔ تطبیق واژه‌ها: ${allMatchedKeywords.size} مورد از ${jobWords.size} واژهٔ متمایز شناسایی شد؛ این نتیجه تحلیل هوش مصنوعی یا تضمین استخدام نیست.",
+            matchedKeywords = matchedKeywords,
             missingKeywords = missingKeywords,
-            recommendations = listOf(
-                "در بخش تجربیات، به جای نوشتن صرف کارهای انجام شده، دستاوردهای عددی مثل «افزایش ۳۵ درصدی رضایت کاربر» اضافه کنید.",
-                "کلمه کلیدی «تست کاربردپذیری و سنجش نرخ پرش» را در متن معرفی رزومه به کار ببرید.",
-                "فرمت فونت و سرفصل‌ها کاملاً با ربات‌های ATS سازگار است و نرخ خوانایی بالایی دارد."
-            )
+            recommendations = recommendations,
+            formattingGrade = "بررسی نشده"
         )
     }
 
@@ -152,10 +176,13 @@ class GeminiAiService {
                         )
                     )
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                throw IllegalStateException("Gemini proposal generation failed; consumed AI credit should be refunded.", e)
+            }
+            throw IllegalStateException("Gemini returned no usable proposal; consumed AI credit should be refunded.")
         }
 
-        // Domain-specific winning proposals
+        // Local fallback is used only when no API key is configured
         val proposalText = when (tone) {
             "حرفه‌ای و نتیجه‌گرا" -> """
 سلام وقت بخیر جناب کارفرما،
@@ -169,7 +196,7 @@ class GeminiAiService {
 ۴. بازبینی نهایی و اعمال اصلاحات تا رضایت ۱۰۰ درصدی شما
 
 یک نمونه کار دقیقاً در همین فیلد کاری دارم که می‌توانید در پروفایل عمومی من مشاهده فرمایید:
-freelancepro.me/@alireza_ui
+[لینک نمونه‌کار خود را اینجا وارد کنید]
 
 اگر زمان دارید، خوشحال می‌شوم در یک گفتگوی کوتاه، جزئیات زمان‌بندی و مراحل تحویل را با هم هماهنگ کنیم.
             """.trimIndent()
@@ -183,7 +210,7 @@ freelancepro.me/@alireza_ui
 • پشتیبانی فنی بعد از تحویل پروژه
 • گزارش پیشرفت روزانه بدون نیاز به پیگیری مکرر
 
-لینک نمونه‌کارهای فعال: freelancepro.me/@alireza_ui
+لینک نمونه‌کارهای فعال: [لینک نمونه‌کار خود را اینجا وارد کنید]
 آماده‌ام از همین فردا کار را شروع کنیم. در صورت تمایل پیام دهید تا درباره فاز اول صحبت کنیم.
             """.trimIndent()
 
@@ -196,7 +223,7 @@ Here is what I bring to the table:
 2. Clean delivery with comprehensive documentation.
 3. Fast turnaround and transparent communication.
 
-Check my portfolio at freelancepro.me/@alireza_ui. Let's have a quick 5-minute chat to discuss your milestones.
+Check my portfolio at [لینک نمونه‌کار خود را اینجا وارد کنید]. Let's have a quick 5-minute chat to discuss your milestones.
             """.trimIndent()
         }
 
@@ -207,7 +234,7 @@ Check my portfolio at freelancepro.me/@alireza_ui. Let's have a quick 5-minute c
             estimatedDays = 6,
             proposedPriceText = "برآورد منصفانه طبق فازبندی",
             tipsForWinning = listOf(
-                "پیام خود را در ۳۰ دقیقه اول انتشار آگهی ارسال کنید تا شانس دیده‌شدن ۵ برابر شود.",
+                "پیش از ارسال، متن پیشنهاد را با جزئیات واقعی پروژه و تجربهٔ خودتان تطبیق دهید.",
                 "هرگز پیشنهادهای کپی‌پیست شده نفرستید؛ حتماً نام پروژه را در پاراگراف اول بیاورید.",
                 "لینک پورتفولیوی اختصاصی خود را ضمیمه کنید تا کارفرما فوراً کیفیت شما را ببیند."
             )
@@ -215,7 +242,7 @@ Check my portfolio at freelancepro.me/@alireza_ui. Let's have a quick 5-minute c
     }
 
     private suspend fun callGeminiApi(apiKey: String, promptText: String): String? {
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
         val requestJson = JSONObject().apply {
             val contents = JSONArray().apply {
                 put(JSONObject().apply {
@@ -234,16 +261,17 @@ Check my portfolio at freelancepro.me/@alireza_ui. Let's have a quick 5-minute c
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return null
-            val body = response.body?.string() ?: return null
+            if (!response.isSuccessful) throw IllegalStateException("Gemini API HTTP ${response.code}")
+            val body = response.body?.string() ?: throw IllegalStateException("Gemini response body is empty.")
             val root = JSONObject(body)
-            val candidates = root.optJSONArray("candidates") ?: return null
-            if (candidates.length() == 0) return null
+            val candidates = root.optJSONArray("candidates") ?: throw IllegalStateException("Gemini response has no candidates.")
+            if (candidates.length() == 0) throw IllegalStateException("Gemini returned no candidates.")
             val firstCandidate = candidates.getJSONObject(0)
-            val content = firstCandidate.optJSONObject("content") ?: return null
-            val parts = content.optJSONArray("parts") ?: return null
-            if (parts.length() == 0) return null
-            return parts.getJSONObject(0).optString("text")
+            val content = firstCandidate.optJSONObject("content") ?: throw IllegalStateException("Gemini response has no content.")
+            val parts = content.optJSONArray("parts") ?: throw IllegalStateException("Gemini response has no parts.")
+            if (parts.length() == 0) throw IllegalStateException("Gemini response parts are empty.")
+            return parts.getJSONObject(0).optString("text").takeIf { it.isNotBlank() }
+                ?: throw IllegalStateException("Gemini response text is empty.")
         }
     }
 

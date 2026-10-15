@@ -1,6 +1,7 @@
 package com.example
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -23,11 +24,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -35,15 +34,37 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.model.*
+import com.example.billing.BazaarBillingManager
+import com.example.ads.TapsellAdsManager
 import com.example.ui.screens.*
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.AppTab
 import com.example.ui.viewmodel.FreelanceViewModel
 
 class MainActivity : ComponentActivity() {
+    private var billingConnected by mutableStateOf(false)
+    private lateinit var billingManager: BazaarBillingManager
+    private lateinit var tapsellManager: TapsellAdsManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        billingManager = BazaarBillingManager(
+            activity = this,
+            onMessage = { message -> runOnUiThread {
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            } },
+            onConnectionChanged = { connected -> billingConnected = connected }
+        )
+        billingManager.connect()
+        tapsellManager = TapsellAdsManager(
+            activity = this,
+            onMessage = { message -> runOnUiThread {
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            } }
+        )
+        tapsellManager.initialize()
+
         setContent {
             val viewModel: FreelanceViewModel = viewModel()
             val appSettings by viewModel.appSettings.collectAsStateWithLifecycle()
@@ -56,10 +77,62 @@ class MainActivity : ComponentActivity() {
                 }
 
                 CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-                    FreelanceProApp(viewModel = viewModel, appSettings = appSettings)
+                    FreelanceProApp(
+                        viewModel = viewModel,
+                        appSettings = appSettings,
+                        billingConnected = billingConnected,
+                        onPurchaseSubscription = { gateway, planName ->
+                            val expectedGateway = if (BuildConfig.STORE_FLAVOR == "myket") {
+                                PaymentGateway.MYKET
+                            } else {
+                                PaymentGateway.CAFE_BAZAAR
+                            }
+                            if (gateway != expectedGateway) {
+                                Toast.makeText(
+                                    this,
+                                    if (expectedGateway == PaymentGateway.MYKET)
+                                        "در نسخه مایکت، خرید فقط از درگاه مایکت پشتیبانی می‌شود."
+                                    else
+                                        "در نسخه کافه‌بازار، خرید فقط از درگاه کافه‌بازار پشتیبانی می‌شود.",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                val productId = when (planName) {
+                                    "۱ ماهه" -> "vip_monthly"
+                                    "۳ ماهه" -> "vip_quarterly"
+                                    "۱ ساله" -> "vip_yearly"
+                                    else -> null
+                                }
+                                if (productId == null) {
+                                    Toast.makeText(
+                                        this,
+                                        "طرح اشتراک انتخاب‌شده معتبر نیست؛ پرداخت آغاز نشد.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                } else {
+                                    billingManager.subscribe(productId) { verifiedId ->
+                                        viewModel.activateVerifiedSubscription(verifiedId)
+                                    }
+                                }
+                            }
+                        },
+                        onRestoreSubscriptions = { onRestored ->
+                            billingManager.restoreSubscriptions(onRestored)
+                        },
+                        onShowInterstitialAd = { tapsellManager.showInterstitial() },
+                        onShowRewardedAd = {
+                            tapsellManager.showRewarded { viewModel.grantRewardedAdCredits() }
+                        }
+                    )
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        if (::billingManager.isInitialized) billingManager.release()
+        if (::tapsellManager.isInitialized) tapsellManager.release()
+        super.onDestroy()
     }
 }
 
@@ -67,7 +140,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun FreelanceProApp(
     viewModel: FreelanceViewModel,
-    appSettings: AppSettings
+    appSettings: AppSettings,
+    billingConnected: Boolean,
+    onPurchaseSubscription: (PaymentGateway, String) -> Unit,
+    onRestoreSubscriptions: ((String) -> Unit) -> Unit,
+    onShowInterstitialAd: () -> Unit,
+    onShowRewardedAd: () -> Unit
 ) {
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
@@ -88,13 +166,20 @@ fun FreelanceProApp(
     val colors = LocalAppColors.current
     val fontScale = LocalFontScale.current.scale
     val lang = appSettings.language
-    val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiNotice) {
         uiNotice?.let { msg ->
             snackbarHostState.showSnackbar(msg)
             viewModel.dismissNotice()
+        }
+    }
+
+    LaunchedEffect(billingConnected) {
+        if (billingConnected) {
+            onRestoreSubscriptions { productId ->
+                viewModel.activateVerifiedSubscription(productId)
+            }
         }
     }
 
@@ -283,12 +368,8 @@ fun FreelanceProApp(
 
                     AppTab.PUBLIC_PORTFOLIO -> {
                         PublicPortfolioScreen(
-                            userProfile = userProfile,
                             portfolioProjects = portfolioProjects,
-                            onAddProjectClick = { viewModel.setShowVipModal(true) },
-                            onCopyLink = {
-                                clipboardManager.setText(AnnotatedString("https://freelancepro.me/@${userProfile.publicPortfolioSlug}"))
-                            }
+                            onAddProject = { viewModel.addPortfolioProject(it) }
                         )
                     }
 
@@ -333,9 +414,9 @@ fun FreelanceProApp(
                             onThemeColorChange = { viewModel.setThemeColor(it) },
                             onDarkModeToggle = { viewModel.toggleDarkMode(it) },
                             onPaymentGatewayChange = { viewModel.setPaymentGateway(it) },
-                            onShowInterstitialAd = { viewModel.simulateShowInterstitialAd() },
-                            onShowRewardedAd = { viewModel.simulateShowRewardedAd() },
-                            onPurchasePlan = { gateway, plan -> viewModel.simulatePurchaseSubscription(gateway, plan) }
+                            onShowInterstitialAd = onShowInterstitialAd,
+                            onShowRewardedAd = onShowRewardedAd,
+                            onPurchasePlan = { gateway, plan -> onPurchaseSubscription(gateway, plan) }
                         )
                     }
                 }
@@ -366,8 +447,15 @@ fun FreelanceProApp(
         VipUpgradeDialog(
             currentCredits = userProfile.aiCredits,
             onDismiss = { viewModel.setShowVipModal(false) },
-            onUpgrade = { viewModel.upgradeToVip() },
-            onWatchAd = { viewModel.watchRewardedAdForCredits() }
+            onUpgrade = {
+                val storeGateway = if (BuildConfig.STORE_FLAVOR == "myket") {
+                    PaymentGateway.MYKET
+                } else {
+                    PaymentGateway.CAFE_BAZAAR
+                }
+                onPurchaseSubscription(storeGateway, "۱ ساله")
+            },
+            onWatchAd = onShowRewardedAd
         )
     }
 }

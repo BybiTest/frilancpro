@@ -79,7 +79,7 @@ fun VipUpgradeDialog(
                 )
 
                 Text(
-                    text = "دسترسی نامحدود به دستیار هوش مصنوعی و پرتال اختصاصی",
+                    text = "اعتبار نامحدود هوش مصنوعی در زمان فعال بودن اشتراک و مدیریت پورتفولیو",
                     color = colors.textSecondary,
                     fontSize = (13 * fontScale).sp,
                     textAlign = TextAlign.Center,
@@ -97,8 +97,8 @@ fun VipUpgradeDialog(
                 ) {
                     VipFeatureRow(text = "پروپوزال‌نویسی نامحدود با هوش مصنوعی (Gemini)", colors = colors, fontScale = fontScale)
                     VipFeatureRow(text = "اسکنر دقیق ATS برای برنده شدن در استخدام", colors = colors, fontScale = fontScale)
-                    VipFeatureRow(text = "صفحه پورتفولیوی عمومی با دامنه اختصاصی", colors = colors, fontScale = fontScale)
-                    VipFeatureRow(text = "حذف کامل کلیه تبلیغات درون‌برنامه‌ای", colors = colors, fontScale = fontScale)
+                    VipFeatureRow(text = "مدیریت و پیش‌نمایش نمونه‌کارها در پورتفولیو", colors = colors, fontScale = fontScale)
+                    VipFeatureRow(text = "بازیابی وضعیت اشتراک از طریق فروشگاه", colors = colors, fontScale = fontScale)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -118,19 +118,19 @@ fun VipUpgradeDialog(
                     ) {
                         Column {
                             Text(
-                                text = "اشتراک ویژه سالانه (تخفیف ویژه)",
+                                text = "اشتراک ویژه سالانه",
                                 color = colors.primary,
                                 fontSize = (13 * fontScale).sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "ماهانه فقط ۵۹,۰۰۰ تومان",
+                                text = "قیمت نهایی در صفحه پرداخت فروشگاه نمایش داده می‌شود.",
                                 color = colors.textPrimary,
                                 fontSize = (12 * fontScale).sp
                             )
                         }
                         Text(
-                            text = "۵۰٪ تخفیف",
+                            text = "طرح سالانه؛ طبق شرایط فروشگاه",
                             color = Emerald500,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = (12 * fontScale).sp
