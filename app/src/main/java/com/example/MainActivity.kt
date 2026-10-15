@@ -133,6 +133,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         if (::billingManager.isInitialized) billingManager.disconnect()
+        if (::tapsellManager.isInitialized) tapsellManager.release()
         super.onDestroy()
     }
 }
