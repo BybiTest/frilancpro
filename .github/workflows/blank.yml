@@ -28,7 +28,7 @@ jobs:
       - name: Accept Android SDK licenses
         shell: bash
         run: |
-          set -euo pipefail
+          set -eu
           yes | "$SDKMANAGER" --licenses
       - name: Install Android SDK packages
         shell: bash
