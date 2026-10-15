@@ -27,7 +27,9 @@ jobs:
           echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
       - name: Accept Android SDK licenses
         shell: bash
-        run: yes | "$SDKMANAGER" --licenses || true
+        run: |
+          set -euo pipefail
+          yes | "$SDKMANAGER" --licenses
       - name: Install Android SDK packages
         shell: bash
         run: |
