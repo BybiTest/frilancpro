@@ -33,8 +33,9 @@ android {
     applicationId = "com.aistudio.freelancepro.vzxkp"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    // Increment for the next store submission so it can update the installed release.
+    versionCode = 2
+    versionName = "1.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
