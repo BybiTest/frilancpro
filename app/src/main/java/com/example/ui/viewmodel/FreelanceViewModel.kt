@@ -37,8 +37,31 @@ class FreelanceViewModel(
     private val _currentTab = MutableStateFlow(AppTab.RESUME_BUILDER)
     val currentTab: StateFlow<AppTab> = _currentTab.asStateFlow()
 
-    // Settings State
-    private val _appSettings = MutableStateFlow(AppSettings())
+    // Settings are stored locally so user preferences survive app restarts.
+    private val settingsPreferences = application.getSharedPreferences("freelancepro_settings", android.content.Context.MODE_PRIVATE)
+
+    private fun loadAppSettings(): AppSettings {
+        val defaults = AppSettings()
+        return AppSettings(
+            language = runCatching { AppLanguage.valueOf(settingsPreferences.getString("language", defaults.language.name) ?: defaults.language.name) }.getOrDefault(defaults.language),
+            fontScale = runCatching { FontScale.valueOf(settingsPreferences.getString("font_scale", defaults.fontScale.name) ?: defaults.fontScale.name) }.getOrDefault(defaults.fontScale),
+            themeColor = runCatching { ThemeColorChoice.valueOf(settingsPreferences.getString("theme_color", defaults.themeColor.name) ?: defaults.themeColor.name) }.getOrDefault(defaults.themeColor),
+            isDarkMode = settingsPreferences.getBoolean("dark_mode", defaults.isDarkMode),
+            paymentGateway = runCatching { PaymentGateway.valueOf(settingsPreferences.getString("payment_gateway", defaults.paymentGateway.name) ?: defaults.paymentGateway.name) }.getOrDefault(defaults.paymentGateway)
+        )
+    }
+
+    private fun persistAppSettings(settings: AppSettings) {
+        settingsPreferences.edit()
+            .putString("language", settings.language.name)
+            .putString("font_scale", settings.fontScale.name)
+            .putString("theme_color", settings.themeColor.name)
+            .putBoolean("dark_mode", settings.isDarkMode)
+            .putString("payment_gateway", settings.paymentGateway.name)
+            .apply()
+    }
+
+    private val _appSettings = MutableStateFlow(loadAppSettings())
     val appSettings: StateFlow<AppSettings> = _appSettings.asStateFlow()
 
     private val _showVipModal = MutableStateFlow(false)
@@ -92,12 +115,14 @@ class FreelanceViewModel(
     // Settings actions
     fun setLanguage(lang: AppLanguage) {
         _appSettings.update { it.copy(language = lang) }
+        persistAppSettings(_appSettings.value)
         val msg = if (lang == AppLanguage.PERSIAN) "زبان برنامه به فارسی تغییر کرد." else "App language set to English."
         _uiNotice.value = msg
     }
 
     fun setFontScale(scale: FontScale) {
         _appSettings.update { it.copy(fontScale = scale) }
+        persistAppSettings(_appSettings.value)
         val msg = if (_appSettings.value.language == AppLanguage.PERSIAN)
             "اندازه قلم به «${scale.titleFa}» تنظیم شد."
         else
@@ -107,6 +132,7 @@ class FreelanceViewModel(
 
     fun setThemeColor(color: ThemeColorChoice) {
         _appSettings.update { it.copy(themeColor = color) }
+        persistAppSettings(_appSettings.value)
         val msg = if (_appSettings.value.language == AppLanguage.PERSIAN)
             "تم رنگی برنامه به «${color.titleFa}» تغییر یافت."
         else
@@ -116,6 +142,7 @@ class FreelanceViewModel(
 
     fun toggleDarkMode(isDark: Boolean) {
         _appSettings.update { it.copy(isDarkMode = isDark) }
+        persistAppSettings(_appSettings.value)
         val msg = if (_appSettings.value.language == AppLanguage.PERSIAN)
             if (isDark) "حالت شب (Dark Mode) فعال شد." else "حالت روز (Light Mode) فعال شد."
         else
@@ -125,6 +152,7 @@ class FreelanceViewModel(
 
     fun setPaymentGateway(gateway: PaymentGateway) {
         _appSettings.update { it.copy(paymentGateway = gateway) }
+        persistAppSettings(_appSettings.value)
     }
 
     fun simulateShowInterstitialAd() {
