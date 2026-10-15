@@ -43,7 +43,7 @@ class BazaarBillingManager(
         if (rsaKey.isBlank()) {
             connected = false
             onConnectionChanged(false)
-            onMessage("کلید عمومی مایکت در تنظیمات Build موجود نیست؛ خرید فعال نشد.")
+            notifyIfActive("کلید عمومی مایکت در تنظیمات Build موجود نیست؛ خرید فعال نشد.")
             return
         }
         if (helper != null) return
@@ -55,18 +55,18 @@ class BazaarBillingManager(
                 activity.runOnUiThread {
                     if (disposed) return@runOnUiThread
                     connected = result.isSuccess()
-                    onConnectionChanged(connected)
+                    if (!activity.isFinishing && !activity.isDestroyed) onConnectionChanged(connected)
                     if (connected) {
                         // MainActivity observes this connection state and starts exactly one
                         // restore request with the UI callback; don't race it with an
                         // automatic no-op restore here.
-                        onMessage("اتصال پرداخت مایکت برقرار شد.")
+                        notifyIfActive("اتصال پرداخت مایکت برقرار شد.")
                     } else {
                         // Clear the failed client so a later connect() can retry.
                         if (helper === client) helper = null
                         runCatching { client.dispose() }
                             .onFailure { error -> Log.w(TAG, "Error disposing failed Myket client", error) }
-                        onMessage("اتصال پرداخت مایکت برقرار نشد: ${result.message}")
+                        notifyIfActive("اتصال پرداخت مایکت برقرار نشد: ${result.message}")
                     }
                 }
             }
@@ -75,7 +75,7 @@ class BazaarBillingManager(
             helper = null
             connected = false
             onConnectionChanged(false)
-            onMessage("راه‌اندازی پرداخت مایکت ناموفق بود؛ لطفاً دوباره تلاش کنید.")
+            notifyIfActive("راه‌اندازی پرداخت مایکت ناموفق بود؛ لطفاً دوباره تلاش کنید.")
         }
     }
 
@@ -130,6 +130,7 @@ class BazaarBillingManager(
                             return
                         }
 
+                        if (disposed || activity.isFinishing || activity.isDestroyed) return
                         onVerifiedPurchase(purchase.getSku())
                         notifyIfActive("خرید مایکت تأیید شد.")
                     }
@@ -172,7 +173,9 @@ class BazaarBillingManager(
                             }
                             .map { it.getSku() }
                             .distinct()
-                            .forEach(onVerifiedSubscription)
+                            .forEach { productId ->
+                                if (!disposed && !activity.isFinishing && !activity.isDestroyed) onVerifiedSubscription(productId)
+                            }
                     }
                 }
             )
