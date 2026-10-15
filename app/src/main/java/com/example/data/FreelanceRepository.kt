@@ -103,37 +103,9 @@ class FreelanceRepository(context: Context? = null) {
     )
     val activeResume: StateFlow<ResumeData> = _activeResume.asStateFlow()
 
-    private val _portfolioProjects = MutableStateFlow(
-        listOf(
-            PortfolioProject(
-                title = "طراحی مجدد اپلیکیشن فین‌تک پی‌والت",
-                category = "اپلیکیشن موبایل",
-                clientName = "شرکت مالی آریا",
-                description = "ساده‌سازی فرآیند انتقال وجه و افتتاح حساب آنلاین در ۳ مرحله ساده با بازخورد عالی کاربران.",
-                metrics = "۴۰٪ افزایش تراکنش‌های روزانه",
-                projectUrl = "",
-                tags = listOf("Figma", "Fintech", "UX Research", "Design System")
-            ),
-            PortfolioProject(
-                title = "طراحی داشبورد تحلیلی ابری SaaS",
-                category = "داشبورد و وب",
-                clientName = "استارتاپ داده‌گستر",
-                description = "داشبورد مدیریت کمپین‌های تبلیغاتی با نمودارهای تحلیلی و دسترسی تیمی زنده.",
-                metrics = "کاهش ۶۰ درصدی زمان آموزش کاربران جدید",
-                projectUrl = "",
-                tags = listOf("Dashboard", "Data Viz", "SaaS", "Tailwind UI")
-            ),
-            PortfolioProject(
-                title = "طراحی لندینگ پیج و هویت بصری گیم‌شاپ",
-                category = "برندینگ و وب",
-                clientName = "استودیو بازی نکسوس",
-                description = "طراحی بصری تیره (Dark Mode) با انیمیشن‌های میکرو و تعاملی برای گیمرها.",
-                metrics = "نرخ تبدیل ۲۸ درصدی خرید بازی",
-                projectUrl = "",
-                tags = listOf("Gaming", "Dark Mode", "Micro-interactions")
-            )
-        )
-    )
+    // Keep the initial portfolio empty: fabricated client names and performance metrics
+    // must never appear as if they were the user's real work.
+    private val _portfolioProjects = MutableStateFlow<List<PortfolioProject>>(emptyList())
     val portfolioProjects: StateFlow<List<PortfolioProject>> = _portfolioProjects.asStateFlow()
 
     private val portfolioPreferences = context?.applicationContext
