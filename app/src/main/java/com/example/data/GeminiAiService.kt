@@ -72,11 +72,12 @@ class GeminiAiService {
                     )
                 }
             } catch (e: Exception) {
-                // Fallback to intelligent local engine
+                throw IllegalStateException("Gemini ATS analysis failed; consumed AI credit should be refunded.", e)
             }
+            throw IllegalStateException("Gemini returned no usable ATS response; consumed AI credit should be refunded.")
         }
 
-        // Intelligent local domain calculation
+        // Local fallback is used only when no API key is configured
         val resumeSkills = resume.skills.map { it.name.lowercase() }
         val resumeText = "${resume.bio} ${resume.jobTitle} ${resume.experiences.joinToString { it.description }}".lowercase()
         val jobWords = jobDescription.split(" ", "،", ",", "\n", "\t").filter { it.length > 3 }
@@ -152,10 +153,13 @@ class GeminiAiService {
                         )
                     )
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                throw IllegalStateException("Gemini proposal generation failed; consumed AI credit should be refunded.", e)
+            }
+            throw IllegalStateException("Gemini returned no usable proposal; consumed AI credit should be refunded.")
         }
 
-        // Domain-specific winning proposals
+        // Local fallback is used only when no API key is configured
         val proposalText = when (tone) {
             "حرفه‌ای و نتیجه‌گرا" -> """
 سلام وقت بخیر جناب کارفرما،
@@ -234,16 +238,17 @@ Check my portfolio at freelancepro.me/@alireza_ui. Let's have a quick 5-minute c
             .build()
 
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return null
-            val body = response.body?.string() ?: return null
+            if (!response.isSuccessful) throw IllegalStateException("Gemini API HTTP ${response.code}")
+            val body = response.body?.string() ?: throw IllegalStateException("Gemini response body is empty.")
             val root = JSONObject(body)
-            val candidates = root.optJSONArray("candidates") ?: return null
-            if (candidates.length() == 0) return null
+            val candidates = root.optJSONArray("candidates") ?: throw IllegalStateException("Gemini response has no candidates.")
+            if (candidates.length() == 0) throw IllegalStateException("Gemini returned no candidates.")
             val firstCandidate = candidates.getJSONObject(0)
-            val content = firstCandidate.optJSONObject("content") ?: return null
-            val parts = content.optJSONArray("parts") ?: return null
-            if (parts.length() == 0) return null
-            return parts.getJSONObject(0).optString("text")
+            val content = firstCandidate.optJSONObject("content") ?: throw IllegalStateException("Gemini response has no content.")
+            val parts = content.optJSONArray("parts") ?: throw IllegalStateException("Gemini response has no parts.")
+            if (parts.length() == 0) throw IllegalStateException("Gemini response parts are empty.")
+            return parts.getJSONObject(0).optString("text").takeIf { it.isNotBlank() }
+                ?: throw IllegalStateException("Gemini response text is empty.")
         }
     }
 
