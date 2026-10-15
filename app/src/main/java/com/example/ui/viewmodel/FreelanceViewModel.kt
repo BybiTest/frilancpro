@@ -196,6 +196,9 @@ class FreelanceViewModel(
             try {
                 val result = aiService.analyzeResumeWithAts(activeResume.value, jobDescription)
                 _atsResult.value = result
+            } catch (error: Exception) {
+                repository.refundAiCredit()
+                _uiNotice.value = "تحلیل رزومه انجام نشد؛ اعتبار مصرف‌شده بازگردانده شد."
             } finally {
                 _isAtsScanning.value = false
             }
@@ -218,6 +221,9 @@ class FreelanceViewModel(
                     tone = tone
                 )
                 _generatedProposal.value = proposal
+            } catch (error: Exception) {
+                repository.refundAiCredit()
+                _uiNotice.value = "ساخت پیشنهاد انجام نشد؛ اعتبار مصرف‌شده بازگردانده شد."
             } finally {
                 _isGeneratingProposal.value = false
             }
