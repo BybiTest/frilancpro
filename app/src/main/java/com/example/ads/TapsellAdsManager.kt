@@ -93,7 +93,8 @@ class TapsellAdsManager(
     }
 
     fun showInterstitial() {
-        if (released || activity.isFinishing || activity.isDestroyed || !initialized) {
+        if (released || activity.isFinishing || activity.isDestroyed) return
+        if (!initialized) {
             onMessage("تبلیغات تپسل هنوز آماده نیست.")
             return
         }
@@ -110,7 +111,11 @@ class TapsellAdsManager(
                         object : AdShowListener() {
                             override fun onError(error: TapsellPlusErrorModel) {
                                 super.onError(error)
-                                activity.runOnUiThread { onMessage("نمایش تبلیغ بین‌صفحه‌ای ناموفق بود.") }
+                                activity.runOnUiThread {
+                                    if (!released && !activity.isFinishing && !activity.isDestroyed) {
+                                        onMessage("نمایش تبلیغ بین‌صفحه‌ای ناموفق بود.")
+                                    }
+                                }
                             }
                         }
                     )
@@ -118,7 +123,9 @@ class TapsellAdsManager(
 
                 override fun error(message: String) {
                     activity.runOnUiThread {
-                        onMessage("تبلیغ بین‌صفحه‌ای دریافت نشد: $message")
+                        if (!released && !activity.isFinishing && !activity.isDestroyed) {
+                            onMessage("تبلیغ بین‌صفحه‌ای دریافت نشد: $message")
+                        }
                     }
                 }
             }
