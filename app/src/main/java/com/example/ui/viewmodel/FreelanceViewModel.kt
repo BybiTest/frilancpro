@@ -254,16 +254,15 @@ class FreelanceViewModel(
             _uiNotice.value = "شناسه اشتراک معتبر نیست؛ VIP فعال نشد."
             return
         }
-        // This method is called only after Poolakey verifies the purchase or returns
-        // the subscription in Bazaar's current-subscriptions query.
+        // Called after the selected store's billing flow verifies the purchase.
         repository.upgradeToVip()
+        val storeName = if (com.example.BuildConfig.STORE_FLAVOR == "myket") "مایکت" else "کافه‌بازار"
         _uiNotice.value = when (productId) {
-            "vip_monthly" -> "اشتراک یک‌ماهه VIP توسط کافه‌بازار تأیید شد."
-            "vip_quarterly" -> "اشتراک سه‌ماهه VIP توسط کافه‌بازار تأیید شد."
-            else -> "اشتراک یک‌ساله VIP توسط کافه‌بازار تأیید شد."
+            "vip_monthly" -> "اشتراک یک‌ماهه VIP توسط $storeName تأیید شد."
+            "vip_quarterly" -> "اشتراک سه‌ماهه VIP توسط $storeName تأیید شد."
+            else -> "اشتراک یک‌ساله VIP توسط $storeName تأیید شد."
         }
     }
-
     fun grantRewardedAdCredits() {
         repository.addRewardAiCredits(3)
         _showVipModal.value = false
