@@ -25,6 +25,13 @@ class BazaarBillingManager(
     private var disposed = false
     private var operationInProgress = false
 
+    private fun notifyIfActive(message: String) {
+        if (disposed || activity.isFinishing || activity.isDestroyed) return
+        activity.runOnUiThread {
+            if (!disposed && !activity.isFinishing && !activity.isDestroyed) onMessage(message)
+        }
+    }
+
     private val validVipProducts = setOf(
         "vip_monthly",
         "vip_quarterly",
