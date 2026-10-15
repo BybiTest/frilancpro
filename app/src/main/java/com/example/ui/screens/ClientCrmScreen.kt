@@ -104,9 +104,10 @@ fun ClientCrmScreen(
         // Status Filter Chips
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.horizontalScroll(rememberScrollState())
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilterChip(
                     selected = selectedStatusFilter == null,
@@ -178,7 +179,7 @@ fun ClientCrmScreen(
 
                     // Progress bar
                     LinearProgressIndicator(
-                        progress = { project.progressPercent / 100f },
+                        progress = { project.progressPercent.coerceIn(0, 100) / 100f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
