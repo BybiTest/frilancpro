@@ -6,13 +6,13 @@ enum class SubscriptionTier(val titleFa: String, val badgeColor: Long) {
 }
 
 data class UserProfile(
-    val username: String = "alireza_ui",
-    val displayName: String = "علی رضایی",
-    val email: String = "ali.rezaei@example.com",
+    val username: String = "",
+    val displayName: String = "",
+    val email: String = "",
     val tier: SubscriptionTier = SubscriptionTier.FREE,
     val aiCredits: Int = 5,
-    val publicPortfolioSlug: String = "alireza_ui",
-    val isPortfolioPublic: Boolean = true,
-    val portfolioViewsCount: Int = 248,
-    val clientContactCount: Int = 14
+    val publicPortfolioSlug: String = "",
+    val isPortfolioPublic: Boolean = false,
+    val portfolioViewsCount: Int = 0,
+    val clientContactCount: Int = 0
 )
