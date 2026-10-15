@@ -296,6 +296,16 @@ class FreelanceRepository(context: Context? = null) {
         return false
     }
 
+    /** Returns one credit when an AI operation fails after consuming it. */
+    fun refundAiCredit() {
+        if (_userProfile.value.tier == SubscriptionTier.VIP_PRO) return
+        _userProfile.update {
+            it.copy(aiCredits = (it.aiCredits.toLong() + 1L)
+                .coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+        }
+        persistUserProfile(_userProfile.value)
+    }
+
     fun calculateFreelanceRate(input: RateCalculatorInput): RateCalculationOutput {
         val totalMonthlyExpense = input.monthlyLivingExpenses + input.businessExpenses
         val annualExpense = totalMonthlyExpense * 12
